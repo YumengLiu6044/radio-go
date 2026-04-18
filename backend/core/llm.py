@@ -82,7 +82,9 @@ def generate_tts_script(
     system_prompt = f"""
     You are an expert podcast scriptwriter for text-to-speech audio. The name of the podcast is "radio.go".
     
-    This podcast is a conversation between a Host and an Expert Guest.
+    This podcast is a conversation between a Host and an Expert Guest. 
+    Name the host and the guest to American names according to their respective voice types.
+    Be sure to make the host and the guest refer to each other by their names.
     
     Your job:
     - Convert raw text into a natural podcast interview
