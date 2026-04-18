@@ -1,3 +1,5 @@
+from typing import List
+
 from pydantic import BaseModel
 
 class BaseConvertRequest(BaseModel):
@@ -5,10 +7,11 @@ class BaseConvertRequest(BaseModel):
     voice_type: str
     audio_length: int
     topic: str
+    style: str
 
 class ConvertTextRequest(BaseConvertRequest):
     text_body: str
 
 class ConvertUrlRequest(BaseConvertRequest):
-    url: str
+    urls: List[str]
 

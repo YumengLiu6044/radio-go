@@ -1,8 +1,8 @@
-voxcpm
 python-dotenv
 fastapi
 uvicorn
 pydantic
 requests
-langchain
 langchain-aws
+beautifulsoup4
+boto3
