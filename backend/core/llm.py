@@ -1,20 +1,14 @@
-import os
 from langchain_aws import ChatBedrockConverse
 from models import PodcastScript, Roles
-
-# Prefer AWS_DEFAULT_REGION (boto3 default); fall back to AWS_REGION from .env
-_BEDROCK_REGION = (
-    (os.getenv("AWS_DEFAULT_REGION") or os.getenv("AWS_REGION") or "").strip()
-    or "us-east-1"
-)
+from aws import AWS_REGION
 
 context_llm = ChatBedrockConverse(
     model="global.anthropic.claude-sonnet-4-6",
-    region_name=_BEDROCK_REGION,
+    region_name=AWS_REGION,
 )
 podcase_llm = ChatBedrockConverse(
     model="global.anthropic.claude-sonnet-4-6",
-    region_name=_BEDROCK_REGION,
+    region_name=AWS_REGION,
 ).with_structured_output(PodcastScript)
 
 
