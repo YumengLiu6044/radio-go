@@ -4,8 +4,7 @@ from bs4 import BeautifulSoup
 from fastapi import APIRouter
 import requests
 from pydantic import BaseModel
-from core import sqs, QUEUE_URL
-from core.llm import context_llm, podcase_llm
+from core import sqs, QUEUE_URL, context_llm, podcase_llm
 from models import ConvertTextRequest, ConvertUrlRequest, EnqueueRequest
 import re
 
