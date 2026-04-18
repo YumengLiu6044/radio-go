@@ -5,17 +5,9 @@ from fastapi import APIRouter
 import requests
 from pydantic import BaseModel
 from core import sqs, QUEUE_URL
-from models import PodcastScript, ConvertTextRequest, ConvertUrlRequest, EnqueueRequest
+from core.llm import context_llm, podcase_llm
+from models import ConvertTextRequest, ConvertUrlRequest, EnqueueRequest
 import re
-from langchain_aws import ChatBedrockConverse
-
-context_llm = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6",
-)
-
-podcase_llm = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6",
-).with_structured_output(PodcastScript)
 
 generation_route = APIRouter()
 
