@@ -6,4 +6,3 @@ requests
 langchain-aws
 beautifulsoup4
 boto3
-pypdf

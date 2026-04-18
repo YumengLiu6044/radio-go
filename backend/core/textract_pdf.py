@@ -6,13 +6,11 @@ try ``/generate-from-docs`` without AWS (quality may differ from Textract).
 """
 
 from __future__ import annotations
-import io
 import os
 import time
 import uuid
 from botocore.exceptions import ClientError
 from core import s3, textract, TEXTRACT_BUCKET
-from pypdf import PdfReader
 
 
 class TextractConfigError(RuntimeError):
@@ -61,26 +59,6 @@ def _poll_and_collect_lines(
         time.sleep(poll_interval_sec)
     raise TimeoutError(f"Textract job {job_id} did not finish within {max_wait_sec} seconds")
 
-
-def _extract_corpus_with_pypdf(files: list[tuple[str, bytes]]) -> str:
-
-    chunks: list[str] = []
-    for name, pdf_bytes in files:
-        try:
-            reader = PdfReader(io.BytesIO(pdf_bytes))
-        except Exception as e:
-            raise ValueError(f"Could not read PDF: {name}") from e
-        parts: list[str] = []
-        for page in reader.pages:
-            t = page.extract_text()
-            if t and t.strip():
-                parts.append(t.strip())
-        text = "\n".join(parts).strip()
-        if text:
-            chunks.append(text)
-    return "\n\n".join(chunks)
-
-
 def extract_corpus_from_pdf_files(files: list[tuple[str, bytes]]) -> str:
     """Return one corpus string for all PDFs in ``files`` (filename, bytes).
 
@@ -98,9 +76,6 @@ def extract_corpus_from_pdf_files(files: list[tuple[str, bytes]]) -> str:
                 f"PDF too large: {name} ({len(pdf_bytes)} bytes). "
                 f"Max size is {max_bytes} bytes (override with TEXTRACT_MAX_PDF_BYTES)."
             )
-
-    if not os.environ.get("TEXTRACT_S3_BUCKET", "").strip():
-        return _extract_corpus_with_pypdf(files)
 
     prefix = _staging_prefix()
 
