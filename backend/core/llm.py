@@ -1,6 +1,6 @@
 from langchain_aws import ChatBedrockConverse
 from models import PodcastScript, Roles
-from aws import AWS_REGION
+from .aws import AWS_REGION
 
 context_llm = ChatBedrockConverse(
     model="global.anthropic.claude-sonnet-4-6",
