@@ -8,8 +8,11 @@ class Roles(str, Enum):
 
 
 class VoiceType(str, Enum):
-    FEMALE = "female"
-    MALE = "male"
+    MALE_DEEP = "male_deep"
+    MALE_CASUAL = "male_casual"
+    FEMALE_SOFT = "female_soft"
+    FEMALE_ENERGETIC = "female_energetic"
+    NEUTRAL_PROFESSIONAL = "neutral_professional"
 
 
 class DialogueLine(BaseModel):
