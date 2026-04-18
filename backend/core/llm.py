@@ -1,7 +1,5 @@
 import os
-
 from langchain_aws import ChatBedrockConverse
-from pydantic import BaseModel
 from models import PodcastScript, Roles
 
 # Prefer AWS_DEFAULT_REGION (boto3 default); fall back to AWS_REGION from .env
