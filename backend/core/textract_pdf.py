@@ -6,40 +6,17 @@ try ``/generate-from-docs`` without AWS (quality may differ from Textract).
 """
 
 from __future__ import annotations
-
 import io
 import os
 import time
 import uuid
-
-import boto3
 from botocore.exceptions import ClientError
-
-_AWS_REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
-
-
-def _s3_client():
-    return boto3.client("s3", region_name=_AWS_REGION)
-
-
-def _textract_client():
-    return boto3.client("textract", region_name=_AWS_REGION)
+from core import s3, textract, TEXTRACT_BUCKET
+from pypdf import PdfReader
 
 
 class TextractConfigError(RuntimeError):
     """Missing or invalid environment configuration for Textract + S3."""
-
-
-def _staging_bucket() -> str:
-    bucket = os.environ.get("TEXTRACT_S3_BUCKET", "").strip()
-    if not bucket:
-        raise TextractConfigError(
-            "Set TEXTRACT_S3_BUCKET to an S3 bucket in the same AWS Region as Amazon Textract. "
-            "Each PDF is uploaded there temporarily for asynchronous text detection (required for "
-            "multi-page PDFs). See AWS IAM: textract:StartDocumentTextDetection, "
-            "textract:GetDocumentTextDetection, and s3:PutObject/GetObject/DeleteObject on that bucket."
-        )
-    return bucket
 
 
 def _staging_prefix() -> str:
@@ -86,7 +63,6 @@ def _poll_and_collect_lines(
 
 
 def _extract_corpus_with_pypdf(files: list[tuple[str, bytes]]) -> str:
-    from pypdf import PdfReader
 
     chunks: list[str] = []
     for name, pdf_bytes in files:
@@ -126,23 +102,20 @@ def extract_corpus_from_pdf_files(files: list[tuple[str, bytes]]) -> str:
     if not os.environ.get("TEXTRACT_S3_BUCKET", "").strip():
         return _extract_corpus_with_pypdf(files)
 
-    bucket = _staging_bucket()
     prefix = _staging_prefix()
-    s3 = _s3_client()
-    textract = _textract_client()
 
     chunks: list[str] = []
     for name, pdf_bytes in files:
         key = f"{prefix}{uuid.uuid4()}.pdf"
         try:
             s3.put_object(
-                Bucket=bucket,
+                Bucket=TEXTRACT_BUCKET,
                 Key=key,
                 Body=pdf_bytes,
                 ContentType="application/pdf",
             )
             start = textract.start_document_text_detection(
-                DocumentLocation={"S3Object": {"Bucket": bucket, "Name": key}},
+                DocumentLocation={"S3Object": {"Bucket": TEXTRACT_BUCKET, "Name": key}},
             )
             job_id = start["JobId"]
             text = _poll_and_collect_lines(textract, job_id)
@@ -150,7 +123,7 @@ def extract_corpus_from_pdf_files(files: list[tuple[str, bytes]]) -> str:
                 chunks.append(text.strip())
         finally:
             try:
-                s3.delete_object(Bucket=bucket, Key=key)
+                s3.delete_object(Bucket=TEXTRACT_BUCKET, Key=key)
             except ClientError:
                 pass
 

@@ -7,7 +7,7 @@ from core import sqs, QUEUE_URL, generate_tts_script, audio_book_table
 from models import ConvertTextRequest, ConvertUrlRequest, EnqueueRequest, VoiceType
 import re
 from botocore.exceptions import ClientError
-from services.textract_pdf import TextractConfigError, extract_corpus_from_pdf_files
+from core.textract_pdf import TextractConfigError, extract_corpus_from_pdf_files
 
 generation_route = APIRouter()
 
