@@ -7,7 +7,7 @@ from core import sqs, QUEUE_URL, generate_tts_script, audio_book_table
 from models import ConvertTextRequest, ConvertUrlRequest, EnqueueRequest
 import re
 
-generation_route = APIRouter()
+generation_route = APIRouter(prefix="/generate", tags=["generate"])
 
 @generation_route.post("/generate-from-text")
 async def generate_from_text(params: ConvertTextRequest):
