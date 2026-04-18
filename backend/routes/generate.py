@@ -1,11 +1,13 @@
 import json
 import uuid
 from bs4 import BeautifulSoup
-from fastapi import APIRouter
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 import requests
 from core import sqs, QUEUE_URL, generate_tts_script, audio_book_table
-from models import ConvertTextRequest, ConvertUrlRequest, EnqueueRequest
+from models import ConvertTextRequest, ConvertUrlRequest, EnqueueRequest, VoiceType
 import re
+from botocore.exceptions import ClientError
+from services.textract_pdf import TextractConfigError, extract_corpus_from_pdf_files
 
 generation_route = APIRouter()
 
@@ -56,8 +58,62 @@ async def generate_from_url(params: ConvertUrlRequest):
     }
 
 @generation_route.post("/generate-from-docs")
-async def generate_from_docs():
-    ...
+async def generate_from_docs(
+    user_id: str = Form(default="demo-user"),
+    voice_type_host: VoiceType = Form(default=VoiceType.FEMALE),
+    voice_type_guest: VoiceType = Form(default=VoiceType.MALE),
+    audio_length: int = Form(default=120),
+    topic: str = Form(default="Episode topic"),
+    style: str = Form(default="Interview"),
+    file: UploadFile | None = File(
+        default=None,
+        description="PDF document (choose a file to generate; defaults to none in /docs until you pick one)",
+    ),
+):
+    _ = user_id  # reserved for future persistence; aligns with other convert endpoints
+
+    if file is None:
+        raise HTTPException(status_code=400, detail="Upload a PDF in `file`.")
+
+    name = file.filename or "document.pdf"
+    body = await file.read()
+    if not body:
+        raise HTTPException(status_code=400, detail=f"Empty file: {name}")
+
+    prepared = [(name, body)]
+
+    try:
+        corpus = extract_corpus_from_pdf_files(prepared)
+    except TextractConfigError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except TimeoutError as e:
+        raise HTTPException(status_code=504, detail=str(e)) from e
+    except RuntimeError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+    except ClientError as e:
+        raise HTTPException(status_code=502, detail=f"AWS error: {e}") from e
+
+    if not corpus.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="No text could be extracted from the PDF (empty or unsupported content).",
+        )
+
+    corpus = re.sub(r"\n\s*\n", "\n\n", corpus)
+    corpus = re.sub(r"[ \t]+", " ", corpus)
+
+    return {
+        "script": generate_tts_script(
+            corpus,
+            audio_length,
+            voice_type_host,
+            voice_type_guest,
+            style,
+            topic,
+        ),
+    }
 
 
 @generation_route.post("/confirm")
