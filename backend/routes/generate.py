@@ -3,7 +3,7 @@ import uuid
 from bs4 import BeautifulSoup
 from fastapi import APIRouter
 import requests
-from core import sqs, QUEUE_URL, generate_tts_script
+from core import sqs, QUEUE_URL, generate_tts_script, audio_book_table
 from models import ConvertTextRequest, ConvertUrlRequest, EnqueueRequest
 import re
 
@@ -64,6 +64,15 @@ async def generate_from_docs():
 async def confirm(param: EnqueueRequest):
     job_id = str(uuid.uuid4())
 
+    # Insert audio record
+    record = {
+        "user_id": param.user_id,
+        "job_id": job_id,
+        "total_lines": len(param.script_data.lines),
+    }
+    audio_book_table.put_item(Item=record)
+
+    # Enqueue jobs
     for i, line in enumerate(param.script_data.lines):
         message = {
             "job_id": job_id,
@@ -78,8 +87,4 @@ async def confirm(param: EnqueueRequest):
             MessageBody=json.dumps(message),
         )
 
-    return {
-        "job_id": job_id,
-        "status": "queued",
-        "total_lines": len(param.script_data.lines),
-    }
+    return record
