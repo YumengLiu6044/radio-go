@@ -9,7 +9,7 @@ import re
 from botocore.exceptions import ClientError
 from core.textract_pdf import TextractConfigError, extract_corpus_from_pdf_files
 
-generation_route = APIRouter()
+generation_route = APIRouter(prefix="/generate", tags=["generate"])
 
 @generation_route.post("/generate-from-text")
 async def generate_from_text(params: ConvertTextRequest):

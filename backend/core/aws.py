@@ -13,3 +13,4 @@ audio_book_table = dynamodb.Table("audio-books")
 book_parts = dynamodb.Table("book-parts")
 
 TEXTRACT_BUCKET = os.getenv("TEXTRACT_S3_BUCKET")
+AUDIO_BUCKET_NAME = os.getenv("AUDIO_BUCKET_NAME")

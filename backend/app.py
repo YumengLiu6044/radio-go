@@ -6,8 +6,8 @@ load_dotenv()
 from botocore.exceptions import ClientError
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from routes import generation_route, streaming_route
 
-from routes import generation_route
 
 log = logging.getLogger("radio_go.aws")
 
@@ -29,3 +29,4 @@ async def aws_client_error_handler(request, exc: ClientError):
 
 
 app.include_router(generation_route)
+app.include_router(streaming_route)
