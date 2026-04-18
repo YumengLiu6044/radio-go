@@ -20,7 +20,8 @@ async def generate_from_text(params: ConvertTextRequest):
             params.voice_type_host,
             params.voice_type_guest,
             params.style,
-            params.topic
+            params.topic,
+            params.single
         ),
     }
 
@@ -53,7 +54,9 @@ async def generate_from_url(params: ConvertUrlRequest):
             params.voice_type_host,
             params.voice_type_guest,
             params.style,
-            params.topic
+            params.topic,
+            params.single
+
         ),
     }
 
@@ -65,6 +68,7 @@ async def generate_from_docs(
     audio_length: int = Form(default=120),
     topic: str = Form(default="Episode topic"),
     style: str = Form(default="Interview"),
+    single: bool = Form(default=False),
     file: UploadFile | None = File(
         default=None,
         description="PDF document (choose a file to generate; defaults to none in /docs until you pick one)",
@@ -112,6 +116,7 @@ async def generate_from_docs(
             voice_type_guest,
             style,
             topic,
+            single
         ),
     }
 

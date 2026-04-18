@@ -2,7 +2,7 @@ import os
 
 from langchain_aws import ChatBedrockConverse
 from pydantic import BaseModel
-from models import PodcastScript
+from models import PodcastScript, Roles
 
 # Prefer AWS_DEFAULT_REGION (boto3 default); fall back to AWS_REGION from .env
 _BEDROCK_REGION = (
@@ -64,7 +64,6 @@ def enrich_context(corpus: str, topic: str) -> str:
 
     return response.content.strip()
 
-
 def generate_tts_script(
     corpus: str,
     audio_length: int,
@@ -72,32 +71,52 @@ def generate_tts_script(
     voice_type_guest: str,
     style: str,
     topic: str,
-) -> dict | BaseModel:
-    corpus = corpus[:8000]  # safe chunk size
+    single: bool = False,
+) -> dict:
+    corpus = corpus[:8000]
 
-    # 3. Estimate target length
     target_words = estimate_word_count(audio_length)
 
-    # 4. Prompt engineering
+    if single:
+        role_description = f"""
+        This podcast is a solo narration by a single speaker.
+        The speaker should sound natural, engaging, and expressive.
+        Give the speaker an American name that matches the voice type.
+        The entire script should be delivered as one continuous narration.
+        """
+
+        voice_constraints = f"""
+        Voice: {voice_type_host}
+        """
+
+    else:
+        role_description = f"""
+        This podcast is a conversation between a Host and an Expert Guest.
+        Give both the host and guest American names that match their voice types.
+        Ensure they refer to each other by name naturally in conversation.
+        """
+
+        voice_constraints = f"""
+        Voice for the host: {voice_type_host}
+        Voice for the guest: {voice_type_guest}
+        """
+
     system_prompt = f"""
-    You are an expert podcast scriptwriter for text-to-speech audio. The name of the podcast is "radio.go".
-    
-    This podcast is a conversation between a Host and an Expert Guest. 
-    Name the host and the guest to American names according to their respective voice types.
-    Be sure to make the host and the guest refer to each other by their names.
-    
+    You are an expert podcast scriptwriter for text-to-speech audio.
+    The name of the podcast is "radio.go".
+
+    {role_description}
+
     Your job:
-    - Convert raw text into a natural podcast interview
-    - Format it as a conversation between a Host and an Expert Guest
-    - Optimize for spoken audio, not reading
+    - Convert raw text into a natural spoken podcast script
+    - Optimize for listening, not reading
 
     Constraints:
     - Target length: ~{target_words} words
-    - Voice for the host: {voice_type_host}
-    - Voice for the guest: {voice_type_guest}
+    - {voice_constraints}
     - Style: {style}
     - Topic: {topic}
-    
+
     Guidelines:
     - Use short, clear sentences
     - Add natural transitions
@@ -105,10 +124,9 @@ def generate_tts_script(
     - Avoid markdown or formatting symbols
     - Spell out abbreviations when needed
     - Make it sound conversational and fluid
-    - Add light emphasis cues using commas and pauses
-    - No stage directions like [pause], just natural phrasing
-    
-    Output ONLY the final script.
+    - Add light emphasis using commas and phrasing
+    - No stage directions
+
     """
 
     enriched_context = enrich_context(corpus, topic)
@@ -121,10 +139,13 @@ def generate_tts_script(
     Create the final TTS script.
     """
 
-    # 5. Call LLM
     response = podcase_llm.invoke([
         ("system", system_prompt),
         ("human", human_prompt),
     ])
+
+    if single:
+        for i, line in enumerate(response.lines):
+            response.lines[i].speaker = Roles.HOST
 
     return response

@@ -10,6 +10,7 @@ class BaseConvertRequest(BaseModel):
     audio_length: int
     topic: str
     style: str
+    single: bool = False
 
 
 class ConvertTextRequest(BaseConvertRequest):
