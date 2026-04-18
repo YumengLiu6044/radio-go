@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { episodesForTopic, topics, type Episode } from '../data/mockData'
 
 type MyPodcastsProps = {
@@ -7,50 +8,136 @@ type MyPodcastsProps = {
   onPlayAll: (topicId: string) => void
 }
 
+function TopicCarousel({
+  topicName,
+  eps,
+  playingEpisodeId,
+  onPlay,
+  onCheatSheet,
+  onPlayAll,
+  topicId,
+}: {
+  topicName: string
+  topicId: string
+  eps: Episode[]
+  playingEpisodeId: string | null
+  onPlay: (episode: Episode) => void
+  onCheatSheet: (episodeId: string) => void
+  onPlayAll: (topicId: string) => void
+}) {
+  const scRef = useRef<HTMLDivElement | null>(null)
+  const [canLeft, setCanLeft] = useState(false)
+  const [canRight, setCanRight] = useState(false)
+
+  const refresh = useCallback(() => {
+    const el = scRef.current
+    if (!el) return
+    const { scrollLeft, scrollWidth, clientWidth } = el
+    setCanLeft(scrollLeft > 4)
+    setCanRight(scrollLeft + clientWidth < scrollWidth - 4)
+  }, [])
+
+  useEffect(() => {
+    const el = scRef.current
+    if (!el) return
+    refresh()
+    const ro = new ResizeObserver(refresh)
+    ro.observe(el)
+    el.addEventListener('scroll', refresh, { passive: true })
+    window.addEventListener('resize', refresh)
+    const t = window.setTimeout(refresh, 200)
+    return () => {
+      ro.disconnect()
+      el.removeEventListener('scroll', refresh)
+      window.removeEventListener('resize', refresh)
+      clearTimeout(t)
+    }
+  }, [eps.length, refresh])
+
+  const scrollBy = (dir: number) => {
+    scRef.current?.scrollBy({ left: dir * 280, behavior: 'smooth' })
+  }
+
+  return (
+    <section className="topic-section">
+      <div className="topic-section-header">
+        <h2>{topicName}</h2>
+        <button type="button" className="play-all" onClick={() => onPlayAll(topicId)}>
+          Play All
+        </button>
+      </div>
+      <div className="carousel-shell">
+        {canLeft && (
+          <button
+            type="button"
+            className="carousel-scroll-btn carousel-scroll-btn--left"
+            aria-label="Scroll podcasts left"
+            onClick={() => scrollBy(-1)}
+          >
+            ‹
+          </button>
+        )}
+        <div ref={scRef} className="carousel">
+          {eps.map((ep) => (
+            <article key={ep.id} className={`episode-card${playingEpisodeId === ep.id ? ' playing' : ''}`}>
+              <div className="ep-thumb-wrap">
+                <div className="ep-thumb" style={{ background: ep.cardBg }}>
+                  {ep.emoji}
+                </div>
+                <span className="ep-badge">{ep.style}</span>
+              </div>
+              <div className="ep-body">
+                <h3 className="ep-title">{ep.title}</h3>
+                <div className="ep-meta">
+                  {ep.durationMin} min • {ep.depth}
+                </div>
+                <div className="ep-actions">
+                  <button type="button" className="ep-btn primary" onClick={() => onPlay(ep)}>
+                    Play
+                  </button>
+                  <button type="button" className="ep-btn" onClick={() => onCheatSheet(ep.id)}>
+                    Cheat Sheet
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+        {canRight && (
+          <button
+            type="button"
+            className="carousel-scroll-btn carousel-scroll-btn--right"
+            aria-label="Scroll podcasts right"
+            onClick={() => scrollBy(1)}
+          >
+            ›
+          </button>
+        )}
+      </div>
+    </section>
+  )
+}
+
 export function MyPodcasts({ playingEpisodeId, onPlay, onCheatSheet, onPlayAll }: MyPodcastsProps) {
   return (
     <div>
       <h2 className="page-title">My Podcasts</h2>
-      <p className="page-sub">Your library, organized by topic. Scroll sideways in each row.</p>
+      <p className="page-sub">Your library, organized by topic. Use the arrows to browse each row.</p>
 
       {topics.map((topic) => {
         const eps = episodesForTopic(topic.id)
         if (eps.length === 0) return null
         return (
-          <section key={topic.id} className="topic-section">
-            <div className="topic-section-header">
-              <h2>{topic.name}</h2>
-              <button type="button" className="play-all" onClick={() => onPlayAll(topic.id)}>
-                Play All
-              </button>
-            </div>
-            <div className="carousel">
-              {eps.map((ep) => (
-                <article key={ep.id} className={`episode-card${playingEpisodeId === ep.id ? ' playing' : ''}`}>
-                  <div className="ep-thumb-wrap">
-                    <div className="ep-thumb" style={{ background: ep.cardBg }}>
-                      {ep.emoji}
-                    </div>
-                    <span className="ep-badge">{ep.style}</span>
-                  </div>
-                  <div className="ep-body">
-                    <h3 className="ep-title">{ep.title}</h3>
-                    <div className="ep-meta">
-                      {ep.durationMin} min • {ep.depth}
-                    </div>
-                    <div className="ep-actions">
-                      <button type="button" className="ep-btn primary" onClick={() => onPlay(ep)}>
-                        Play
-                      </button>
-                      <button type="button" className="ep-btn" onClick={() => onCheatSheet(ep.id)}>
-                        Cheat Sheet
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
+          <TopicCarousel
+            key={topic.id}
+            topicId={topic.id}
+            topicName={topic.name}
+            eps={eps}
+            playingEpisodeId={playingEpisodeId}
+            onPlay={onPlay}
+            onCheatSheet={onCheatSheet}
+            onPlayAll={onPlayAll}
+          />
         )
       })}
     </div>

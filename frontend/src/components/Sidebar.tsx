@@ -1,12 +1,15 @@
 import type { Topic } from '../data/mockData'
 
-type Page = 'create' | 'podcasts' | 'cheats'
+export type AppPage = 'create' | 'podcasts' | 'cheats' | 'playlist'
 
 type SidebarProps = {
-  activePage: Page
-  onNavigate: (page: Page) => void
+  activePage: AppPage
+  activeTopicId: string | null
+  onNavigate: (page: 'create' | 'podcasts' | 'cheats') => void
   topics: Topic[]
   onTopicClick: (topicId: string) => void
+  collapsed: boolean
+  onToggleCollapsed: () => void
 }
 
 function IconCreate() {
@@ -37,14 +40,34 @@ function IconSheet() {
   )
 }
 
-export function Sidebar({ activePage, onNavigate, topics, onTopicClick }: SidebarProps) {
+export function Sidebar({
+  activePage,
+  activeTopicId,
+  onNavigate,
+  topics,
+  onTopicClick,
+  collapsed,
+  onToggleCollapsed,
+}: SidebarProps) {
   return (
     <aside className="app-sidebar">
-      <div className="app-brand">
-        <div className="app-brand-mark" aria-hidden>
-          🎙
+      <div className="app-sidebar-header">
+        <div className="app-brand">
+          <div className="app-brand-mark" aria-hidden>
+            🎙
+          </div>
+          <h1>ContextCast</h1>
         </div>
-        <h1>ContextCast</h1>
+        <button
+          type="button"
+          className="app-sidebar-toggle"
+          onClick={onToggleCollapsed}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+          title={collapsed ? 'Expand' : 'Collapse'}
+        >
+          {collapsed ? '›' : '‹'}
+        </button>
       </div>
 
       <nav className="app-nav" aria-label="Primary">
@@ -54,7 +77,7 @@ export function Sidebar({ activePage, onNavigate, topics, onTopicClick }: Sideba
           onClick={() => onNavigate('create')}
         >
           <IconCreate />
-          Create Podcast
+          <span className="app-nav-text">Create Podcast</span>
         </button>
         <button
           type="button"
@@ -62,7 +85,7 @@ export function Sidebar({ activePage, onNavigate, topics, onTopicClick }: Sideba
           onClick={() => onNavigate('podcasts')}
         >
           <IconLibrary />
-          My Podcasts
+          <span className="app-nav-text">My Podcasts</span>
         </button>
         <button
           type="button"
@@ -70,14 +93,19 @@ export function Sidebar({ activePage, onNavigate, topics, onTopicClick }: Sideba
           onClick={() => onNavigate('cheats')}
         >
           <IconSheet />
-          My Cheat Sheets
+          <span className="app-nav-text">My Cheat Sheets</span>
         </button>
       </nav>
 
       <div className="app-topics-label">Topics</div>
       <div className="app-topic-list">
         {topics.map((t) => (
-          <button key={t.id} type="button" className="app-topic-link" onClick={() => onTopicClick(t.id)}>
+          <button
+            key={t.id}
+            type="button"
+            className={`app-topic-link${activeTopicId === t.id ? ' active' : ''}`}
+            onClick={() => onTopicClick(t.id)}
+          >
             <span className="app-topic-dot" style={{ background: t.color }} aria-hidden />
             <span className="app-topic-name">{t.name}</span>
             <span className="app-topic-badge">{t.count}</span>

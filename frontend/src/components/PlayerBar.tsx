@@ -6,6 +6,8 @@ export type NowPlayingState = {
   topicName: string
   currentSec: number
   isPlaying: boolean
+  /** From `<audio>` metadata when available */
+  durationSec?: number
 }
 
 type PlayerBarProps = {
@@ -100,8 +102,9 @@ export function PlayerBar({
     )
   }
 
-  const { episode, currentSec, isPlaying } = nowPlaying
-  const totalSec = episode.durationMin * 60
+  const { episode, currentSec, isPlaying, durationSec } = nowPlaying
+  const totalSec =
+    durationSec && durationSec > 0 ? durationSec : Math.max(1, episode.durationMin * 60)
   const ratio = totalSec > 0 ? currentSec / totalSec : 0
 
   const onBarClick = (e: MouseEvent<HTMLDivElement>) => {
@@ -129,7 +132,7 @@ export function PlayerBar({
             className={`player-ctrl${shuffle ? ' shuffle-on' : ''}`}
             onClick={onShuffleToggle}
             aria-pressed={shuffle}
-            title="Shuffle"
+            title="Shuffle within current topic"
           >
             <IconShuffle />
           </button>
