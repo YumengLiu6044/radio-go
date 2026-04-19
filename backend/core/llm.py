@@ -1,6 +1,16 @@
+import os
+
 from langchain_aws import ChatBedrockConverse
 from models import PodcastScript, Roles, VoiceType
 from .aws import AWS_REGION
+
+# Claude 3.5 Sonnet v2 profiles are EOL; use a current model (US inference profile, us-east-1 / us-east-2 / us-west-2).
+# Override in `.env` if your account enables a different ID, e.g. `aws bedrock list-inference-profiles --region us-east-1`
+# Cheaper alternative: `us.anthropic.claude-haiku-4-5-20251001-v1:0` (enable in Bedrock console first).
+BEDROCK_SCRIPT_MODEL = os.getenv(
+    "BEDROCK_SCRIPT_MODEL",
+    "us.anthropic.claude-sonnet-4-20250514-v1:0",
+)
 
 VOICE_INSTRUCTIONS: dict[VoiceType, str] = {
     VoiceType.MALE_DEEP: "Male, deep and slow.",
@@ -17,7 +27,7 @@ def _voice_prompt(v: VoiceType | str) -> str:
     return VOICE_INSTRUCTIONS[v]
 
 podcase_llm = ChatBedrockConverse(
-    model="us.anthropic.claude-3-5-haiku-20241022-v1:0",
+    model=BEDROCK_SCRIPT_MODEL,
     region_name=AWS_REGION,
 ).with_structured_output(PodcastScript)
 

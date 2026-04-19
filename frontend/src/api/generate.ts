@@ -2,7 +2,9 @@
  * Use same-origin `/api` by default so Vite proxy handles backend calls in dev
  * (avoids browser CORS preflight issues). Override via VITE_API_BASE if needed.
  */
-export const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '') ?? '/api'
+const rawApiBase = (import.meta.env.VITE_API_BASE as string | undefined)?.trim().replace(/\/$/, '') ?? ''
+/** Empty `VITE_API_BASE` would break the Vite proxy (requests would miss `/api`). */
+export const API_BASE = rawApiBase.length > 0 ? rawApiBase : '/api'
 
 /**
  * Preset voices for create + API payloads.
@@ -40,6 +42,32 @@ export type DialogueLine = {
 
 export type PodcastScript = {
   lines: DialogueLine[]
+  summarized_title: string
+}
+
+const VOICE_ID_SET = new Set<string>(VOICE_TYPE_VALUES)
+
+/**
+ * Bedrock sometimes returns voice strings that are not exact enum members; confirm would 422 and never hit SQS.
+ */
+export function normalizeScriptVoices(
+  script: PodcastScript,
+  fallbackHost: VoiceTypeApi,
+  fallbackGuest: VoiceTypeApi,
+): PodcastScript {
+  return {
+    ...script,
+    summarized_title: (script.summarized_title ?? '').trim() || 'Untitled',
+    lines: script.lines.map((line) => {
+      const speaker: DialogueLine['speaker'] = line.speaker === 'guest' ? 'guest' : 'host'
+      const fallback = speaker === 'guest' ? fallbackGuest : fallbackHost
+      const vt =
+        typeof line.voice_type === 'string' && VOICE_ID_SET.has(line.voice_type)
+          ? (line.voice_type as VoiceTypeApi)
+          : fallback
+      return { ...line, speaker, voice_type: vt }
+    }),
+  }
 }
 
 function joinUrl(path: string): string {
@@ -114,6 +142,7 @@ export type GenerateBaseBody = {
   voice_type_guest: VoiceTypeApi
   audio_length: number
   topic: string
+  topic_id: string
   style: string
   single: boolean
 }
@@ -145,6 +174,7 @@ export async function generateFromPdf(
   form.append('voice_type_guest', String(fields.voice_type_guest))
   form.append('audio_length', String(fields.audio_length))
   form.append('topic', fields.topic)
+  form.append('topic_id', fields.topic_id)
   form.append('style', fields.style)
   form.append('single', fields.single ? 'true' : 'false')
   form.append('file', file)

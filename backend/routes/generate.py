@@ -1,4 +1,5 @@
 import json
+import os
 import uuid
 from bs4 import BeautifulSoup
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
@@ -67,6 +68,7 @@ async def generate_from_docs(
     voice_type_guest: VoiceType = Form(default=VoiceType.FEMALE_ENERGETIC),
     audio_length: int = Form(default=120),
     topic: str = Form(default="Episode topic"),
+    topic_id: str = Form(default="history"),
     style: str = Form(default="Interview"),
     single: bool = Form(default=False),
     file: UploadFile | None = File(
@@ -75,6 +77,7 @@ async def generate_from_docs(
     ),
 ):
     _ = user_id  # reserved for future persistence; aligns with other convert endpoints
+    _ = topic_id  # aligns with JSON convert endpoints / library grouping
 
     if file is None:
         raise HTTPException(status_code=400, detail="Upload a PDF in `file`.")
@@ -123,6 +126,15 @@ async def generate_from_docs(
 
 @generation_route.post("/confirm")
 async def confirm(param: EnqueueRequest):
+    # Prefer live env (matches app load_dotenv); module-level QUEUE_URL can be stale if .env was wrong at import.
+    queue_url = (os.getenv("SQS_URL") or "").strip() or (str(QUEUE_URL).strip() if QUEUE_URL else "")
+    if not queue_url:
+        raise HTTPException(
+            status_code=503,
+            detail="SQS_URL is not set in the backend environment. Create a FIFO SQS queue, set SQS_URL in .env, "
+            "or run: python scripts/ensure_aws_resources.py (from the backend folder).",
+        )
+
     job_id = str(uuid.uuid4())
 
     # Insert audio record
@@ -132,6 +144,7 @@ async def confirm(param: EnqueueRequest):
         "total_lines": len(param.script.lines),
         "title": param.script.summarized_title,
         "topic": param.topic,
+        "topic_id": param.topic_id,
         "style": param.style,
         "length": param.audio_length,
     }
@@ -144,15 +157,21 @@ async def confirm(param: EnqueueRequest):
             "line_id": i,
             "speaker": line.speaker.value,
             "text": line.text,
-            "voice_type": line.voice_type,
+            "voice_type": line.voice_type.value,
             "total": len(param.script.lines),
         }
 
         sqs.send_message(
-            QueueUrl=QUEUE_URL,
+            QueueUrl=queue_url,
             MessageBody=json.dumps(message),
             MessageGroupId=job_id,
             MessageDeduplicationId=f"{job_id}-{i}",
         )
 
+    # Visible in uvicorn console without extra logging config
+    print(
+        f"[generate/confirm] job_id={job_id} user_id={param.user_id} "
+        f"lines={len(param.script.lines)} messages sent to SQS queue={queue_url.split('/')[-1]}",
+        flush=True,
+    )
     return record
