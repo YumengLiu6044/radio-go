@@ -56,7 +56,7 @@ export function Sidebar({
           <div className="app-brand-mark" aria-hidden>
             🎙
           </div>
-          <h1>ContextCast</h1>
+          <h1>RadioGo</h1>
         </div>
         <button
           type="button"

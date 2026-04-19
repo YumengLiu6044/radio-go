@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, type ChangeEvent } from 'react'
 import {
+  generateCheatSheetApi,
   generateFromPdf,
   generateFromText,
   generateFromUrl,
@@ -16,8 +17,9 @@ import {
   dynamoRowToEpisode,
   pollJobUntilComplete,
 } from '../api/podcasts'
+import { useCheatSheets } from '../cheatSheets/CheatSheetsContext'
 import { useLibrary } from '../library/LibraryContext'
-import { topics } from '../data/mockData'
+import { useTopics } from '../topics/TopicsContext'
 
 type SourceTab = 'text' | 'url' | 'file'
 
@@ -30,10 +32,6 @@ const LENGTH_OPTIONS = [
   { label: 'Expert', seconds: 200 },
 ] as const
 
-function getTopicLabel(topicId: string): string {
-  return topics.find((t) => t.id === topicId)?.name ?? topicId
-}
-
 function parseApiError(err: unknown): string {
   if (err instanceof Error) return err.message
   return String(err)
@@ -44,6 +42,8 @@ type CreatePodcastProps = {
 }
 
 export function CreatePodcast({ onPublished }: CreatePodcastProps) {
+  const { topicForDisplay, topicsForNav, addCustomTopic } = useTopics()
+  const { addCheatSheet } = useCheatSheets()
   const {
     addOrReplaceUserEpisode,
     markEpisodeAudioReady,
@@ -59,7 +59,9 @@ export function CreatePodcast({ onPublished }: CreatePodcastProps) {
 
   const [pdfFile, setPdfFile] = useState<File | null>(null)
 
-  const [topicId, setTopicId] = useState(topics[0]?.id ?? '')
+  const [topicId, setTopicId] = useState('history')
+  const [showNewTopicForm, setShowNewTopicForm] = useState(false)
+  const [newTopicName, setNewTopicName] = useState('')
   const [style, setStyle] = useState<string>(STYLE_OPTIONS[0])
   const [lengthLabel, setLengthLabel] = useState<string>(LENGTH_OPTIONS[1].label)
   const [single, setSingle] = useState(false)
@@ -72,7 +74,7 @@ export function CreatePodcast({ onPublished }: CreatePodcastProps) {
   const [script, setScript] = useState<PodcastScript | null>(null)
 
   const audioLength = LENGTH_OPTIONS.find((o) => o.label === lengthLabel)?.seconds ?? 120
-  const topicName = getTopicLabel(topicId)
+  const topicName = topicForDisplay(topicId).name
 
   const validateSource = useCallback((): string | null => {
     if (sourceTab === 'text') {
@@ -176,6 +178,27 @@ export function CreatePodcast({ onPublished }: CreatePodcastProps) {
       const lineCount = record.total_lines ?? scriptPayload.lines.length
       const row = { ...record, job_id: record.job_id, topic_id: topicId }
       addOrReplaceUserEpisode(dynamoRowToEpisode(row, false))
+      void (async () => {
+        try {
+          const apiCs = await generateCheatSheetApi({
+            script: scriptPayload,
+            title: String(record.title ?? scriptPayload.summarized_title),
+            topic: topicName,
+          })
+          addCheatSheet({
+            id: `cs-${record.job_id}`,
+            episodeId: record.job_id,
+            title: String(record.title ?? scriptPayload.summarized_title),
+            topicId,
+            topicDot: topicForDisplay(topicId).color,
+            keyTerms: apiCs.key_terms,
+            concepts: apiCs.concepts,
+            takeaway: apiCs.takeaway,
+          })
+        } catch {
+          /* cheat sheet is optional if Bedrock fails */
+        }
+      })()
       setQueueHint(
         `Queued ${lineCount} line(s) to SQS (job ${record.job_id.slice(0, 8)}…). The API is done. ` +
           `Audio will stay at 0/${lineCount} on the card until a separate process consumes SQS and writes to DynamoDB. ` +
@@ -215,16 +238,32 @@ export function CreatePodcast({ onPublished }: CreatePodcastProps) {
     onPublished,
     setQueueHint,
     setEpisodeSynthProgress,
+    addCheatSheet,
+    topicForDisplay,
   ])
 
   const onTopicChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const v = e.target.value
     if (v === '__add__') {
-      window.alert('Mock: “Add new topic” would open here.')
+      setShowNewTopicForm(true)
+      setNewTopicName('')
       return
     }
+    setShowNewTopicForm(false)
     setTopicId(v)
   }
+
+  const submitNewTopic = useCallback(() => {
+    const r = addCustomTopic(newTopicName)
+    if (!r.ok) {
+      setError(r.message)
+      return
+    }
+    setError(null)
+    setTopicId(r.topic.id)
+    setShowNewTopicForm(false)
+    setNewTopicName('')
+  }, [addCustomTopic, newTopicName])
 
   const setPdfFromFileList = (list: FileList | null) => {
     const f = list?.[0]
@@ -240,7 +279,9 @@ export function CreatePodcast({ onPublished }: CreatePodcastProps) {
     setDragOver(false)
     setPdfFile(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
-    setTopicId(topics[0]?.id ?? '')
+    setTopicId('history')
+    setShowNewTopicForm(false)
+    setNewTopicName('')
     setStyle(STYLE_OPTIONS[0])
     setLengthLabel(LENGTH_OPTIONS[1].label)
     setSingle(false)
@@ -349,13 +390,47 @@ export function CreatePodcast({ onPublished }: CreatePodcastProps) {
         <div className="config-block">
           <label htmlFor="topic-select">Topic</label>
           <select id="topic-select" className="config-select create-topic-select" value={topicId} onChange={onTopicChange}>
-            {topics.map((t) => (
+            {topicsForNav.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}
               </option>
             ))}
             <option value="__add__">+ Add New Topic</option>
           </select>
+          {showNewTopicForm && (
+            <div className="create-new-topic-row">
+              <input
+                type="text"
+                className="create-new-topic-input"
+                placeholder="e.g. French cooking, Climate policy…"
+                value={newTopicName}
+                onChange={(e) => setNewTopicName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    submitNewTopic()
+                  }
+                }}
+                aria-label="New topic name"
+              />
+              <div className="create-new-topic-actions">
+                <button type="button" className="pill active" onClick={() => submitNewTopic()}>
+                  Add topic
+                </button>
+                <button
+                  type="button"
+                  className="pill"
+                  onClick={() => {
+                    setShowNewTopicForm(false)
+                    setNewTopicName('')
+                    setError(null)
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -4,8 +4,9 @@ import uuid
 from bs4 import BeautifulSoup
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 import requests
-from core import sqs, QUEUE_URL, generate_tts_script, audio_book_table
-from models import ConvertTextRequest, ConvertUrlRequest, EnqueueRequest, VoiceType
+from core import sqs, QUEUE_URL, generate_cheat_sheet, generate_tts_script, audio_book_table
+from core.canvas_video import spawn_canvas_video_generation
+from models import CheatSheetRequest, ConvertTextRequest, ConvertUrlRequest, EnqueueRequest, VoiceType
 import re
 from botocore.exceptions import ClientError
 from core.textract_pdf import TextractConfigError, extract_corpus_from_pdf_files
@@ -124,6 +125,13 @@ async def generate_from_docs(
     }
 
 
+@generation_route.post("/cheat-sheet")
+async def cheat_sheet(params: CheatSheetRequest):
+    if not params.script.lines:
+        raise HTTPException(status_code=400, detail="Script has no lines.")
+    return generate_cheat_sheet(params.script, params.title, params.topic)
+
+
 @generation_route.post("/confirm")
 async def confirm(param: EnqueueRequest):
     # Prefer live env (matches app load_dotenv); module-level QUEUE_URL can be stale if .env was wrong at import.
@@ -174,4 +182,13 @@ async def confirm(param: EnqueueRequest):
         f"lines={len(param.script.lines)} messages sent to SQS queue={queue_url.split('/')[-1]}",
         flush=True,
     )
+
+    spawn_canvas_video_generation(
+        job_id,
+        param.script.model_copy(deep=True),
+        str(param.script.summarized_title or param.topic or "Episode"),
+        param.topic,
+        episode_audio_sec=int(param.audio_length),
+    )
+
     return record

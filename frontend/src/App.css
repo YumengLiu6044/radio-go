@@ -666,6 +666,30 @@
   max-width: 22rem;
 }
 
+.create-new-topic-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+  margin-top: 0.65rem;
+}
+
+.create-new-topic-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+  max-width: 20rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;
+  font-size: 0.95rem;
+}
+
+.create-new-topic-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
 .create-options-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1320,6 +1344,39 @@
   aspect-ratio: 4 / 3;
 }
 
+.ep-remove {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+  width: 1.65rem;
+  height: 1.65rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: #e03131;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.12);
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    transform 0.12s ease;
+}
+
+.ep-remove:hover {
+  background: #fff5f5;
+  color: #c92a2a;
+  transform: scale(1.06);
+}
+
 .ep-thumb {
   width: 100%;
   height: 100%;
@@ -1682,13 +1739,55 @@
   width: 100%;
 }
 
+.topic-playlist-row-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding-left: var(--playlist-pad-x);
+  padding-right: var(--playlist-pad-x);
+}
+
+.topic-playlist-row-remove {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #e03131;
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #f1d4d4;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.topic-playlist-row-remove:hover {
+  background: #fff5f5;
+  color: #c92a2a;
+  border-color: #f0b4b4;
+}
+
 .topic-playlist-row {
   display: flex;
   align-items: center;
   gap: 0.85rem;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   box-sizing: border-box;
-  padding: 0.65rem var(--playlist-pad-x);
+  padding: 0.65rem 0;
   margin: 0;
   border: none;
   border-radius: 0;
@@ -1697,6 +1796,29 @@
   cursor: pointer;
   color: inherit;
   transition: background 0.12s ease;
+}
+
+.topic-playlist-row-cheat {
+  flex-shrink: 0;
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid #e2e5ea;
+  background: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #3d4451;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.topic-playlist-row-cheat:hover:not(:disabled) {
+  border-color: #cbd2dc;
+  color: #14151a;
+}
+
+.topic-playlist-row-cheat:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .topic-playlist-row:hover {
@@ -1762,6 +1884,26 @@
 }
 
 /* ——— Cheat sheets ——— */
+.cheat-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  margin-bottom: 1.25rem;
+  max-width: 720px;
+}
+
+.cheat-filter-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.cheat-filter-select {
+  min-width: 12rem;
+  max-width: 22rem;
+}
+
 .cheat-feed {
   display: flex;
   flex-direction: column;
@@ -1791,11 +1933,21 @@
 
 .cheat-top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.65rem;
+  row-gap: 0.5rem;
   padding: 1rem 1.15rem;
   border-bottom: 1px solid #f0f2f5;
   background: #fafbfc;
+}
+
+.cheat-top-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
 }
 
 .cheat-dot {
@@ -1806,7 +1958,8 @@
 }
 
 .cheat-top-title {
-  flex: 1;
+  flex: 1 1 12rem;
+  min-width: 0;
   margin: 0;
   font-size: 1rem;
   font-weight: 700;
@@ -1824,6 +1977,21 @@
   transition:
     border-color 0.15s ease,
     color 0.15s ease;
+}
+
+.cheat-library-link {
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #3b5bdb;
+  cursor: pointer;
+}
+
+.cheat-library-link:hover {
+  text-decoration: underline;
 }
 
 .cheat-play-ep:hover {

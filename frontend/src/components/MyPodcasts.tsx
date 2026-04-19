@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { isEpisodeAudioPlayable, topics, type Episode } from '../data/mockData'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCheatSheets } from '../cheatSheets/CheatSheetsContext'
+import { isEpisodeAudioPlayable, type CheatSheet, type Episode } from '../data/mockData'
 import { useLibrary } from '../library/LibraryContext'
+import { useTopics } from '../topics/TopicsContext'
 
 type MyPodcastsProps = {
   playingEpisodeId: string | null
   onPlay: (episode: Episode) => void
   onCheatSheet: (episodeId: string) => void
   onPlayAll: (topicId: string) => void
+  onEpisodeRemoved: (episode: Episode) => void
 }
 
 function TopicCarousel({
@@ -17,6 +20,8 @@ function TopicCarousel({
   onCheatSheet,
   onPlayAll,
   topicId,
+  cheatSheetForEpisode,
+  onEpisodeRemoved,
 }: {
   topicName: string
   topicId: string
@@ -25,6 +30,8 @@ function TopicCarousel({
   onPlay: (episode: Episode) => void
   onCheatSheet: (episodeId: string) => void
   onPlayAll: (topicId: string) => void
+  cheatSheetForEpisode: (episodeId: string) => CheatSheet | undefined
+  onEpisodeRemoved: (episode: Episode) => void
 }) {
   const scRef = useRef<HTMLDivElement | null>(null)
   const [canLeft, setCanLeft] = useState(false)
@@ -81,14 +88,23 @@ function TopicCarousel({
         <div ref={scRef} className="carousel">
           {eps.map((ep) => {
             const playable = isEpisodeAudioPlayable(ep)
-            const prog = ep.synthProgress
-            const pendingLabel =
-              prog && prog.total > 0
-                ? `Synthesizing ${prog.received}/${prog.total}`
-                : 'Waiting for worker…'
+            const hasCheat = Boolean(cheatSheetForEpisode(ep.id))
+            const pendingLabel = 'Generating...'
             return (
             <article key={ep.id} className={`episode-card${playingEpisodeId === ep.id ? ' playing' : ''}`}>
               <div className="ep-thumb-wrap">
+                <button
+                  type="button"
+                  className="ep-remove"
+                  aria-label={`Remove ${ep.title} from library`}
+                  title="Remove podcast and cheat sheet"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onEpisodeRemoved(ep)
+                  }}
+                >
+                  ×
+                </button>
                 <div className="ep-thumb" style={{ background: ep.cardBg }}>
                   {ep.emoji}
                 </div>
@@ -113,7 +129,19 @@ function TopicCarousel({
                   >
                     {playable ? 'Play' : pendingLabel}
                   </button>
-                  <button type="button" className="ep-btn" onClick={() => onCheatSheet(ep.id)}>
+                  <button
+                    type="button"
+                    className="ep-btn"
+                    disabled={!hasCheat}
+                    title={
+                      hasCheat
+                        ? undefined
+                        : 'No cheat sheet for this episode yet. Cheat sheets are created when you publish a new episode from Create.'
+                    }
+                    onClick={() => {
+                      if (hasCheat) onCheatSheet(ep.id)
+                    }}
+                  >
                     Cheat Sheet
                   </button>
                 </div>
@@ -136,8 +164,33 @@ function TopicCarousel({
   )
 }
 
-export function MyPodcasts({ playingEpisodeId, onPlay, onCheatSheet, onPlayAll }: MyPodcastsProps) {
-  const { mergeForTopic, queueHint, setQueueHint } = useLibrary()
+export function MyPodcasts({
+  playingEpisodeId,
+  onPlay,
+  onCheatSheet,
+  onPlayAll,
+  onEpisodeRemoved,
+}: MyPodcastsProps) {
+  const { mergeForTopic, queueHint, setQueueHint, userEpisodes } = useLibrary()
+  const { topicForDisplay, topicsForNav } = useTopics()
+  const { cheatSheetForEpisode } = useCheatSheets()
+
+  const sectionIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const t of topicsForNav) {
+      if (mergeForTopic(t.id).length > 0) ids.add(t.id)
+    }
+    for (const ep of userEpisodes) {
+      if (mergeForTopic(ep.topicId).length > 0) ids.add(ep.topicId)
+    }
+    return [...ids].sort((a, b) => {
+      const hintA = userEpisodes.find((e) => e.topicId === a)?.topicDisplayName
+      const hintB = userEpisodes.find((e) => e.topicId === b)?.topicDisplayName
+      return topicForDisplay(b, hintB).name.localeCompare(topicForDisplay(a, hintA).name, undefined, {
+        sensitivity: 'base',
+      })
+    })
+  }, [topicsForNav, userEpisodes, mergeForTopic, topicForDisplay])
 
   return (
     <div>
@@ -153,19 +206,23 @@ export function MyPodcasts({ playingEpisodeId, onPlay, onCheatSheet, onPlayAll }
         </div>
       )}
 
-      {topics.map((topic) => {
-        const eps = mergeForTopic(topic.id)
+      {sectionIds.map((id) => {
+        const eps = mergeForTopic(id)
         if (eps.length === 0) return null
+        const hint = userEpisodes.find((e) => e.topicId === id)?.topicDisplayName
+        const meta = topicForDisplay(id, hint)
         return (
           <TopicCarousel
-            key={topic.id}
-            topicId={topic.id}
-            topicName={topic.name}
+            key={id}
+            topicId={id}
+            topicName={meta.name}
             eps={eps}
             playingEpisodeId={playingEpisodeId}
             onPlay={onPlay}
             onCheatSheet={onCheatSheet}
             onPlayAll={onPlayAll}
+            cheatSheetForEpisode={cheatSheetForEpisode}
+            onEpisodeRemoved={onEpisodeRemoved}
           />
         )
       })}

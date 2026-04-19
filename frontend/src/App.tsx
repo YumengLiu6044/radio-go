@@ -5,34 +5,45 @@ import { MyCheatSheets } from './components/MyCheatSheets'
 import { MyPodcasts } from './components/MyPodcasts'
 import { PlayerBar, type NowPlayingState } from './components/PlayerBar'
 import { Sidebar, type AppPage } from './components/Sidebar'
+import { fetchCanvasVideoPresignedUrl } from './api/podcasts'
 import {
   canvasVideoSrcForEpisode,
-  cheatSheetForEpisode,
   episodes,
-  getTopicById,
   isEpisodeAudioPlayable,
-  topics,
   type Episode,
 } from './data/mockData'
 import { TopicPlaylist } from './components/TopicPlaylist'
+import { useCheatSheets } from './cheatSheets/CheatSheetsContext'
 import { useLibrary } from './library/LibraryContext'
-
-function buildNowPlaying(episode: Episode, startSec = 0, playing = true): NowPlayingState {
-  const topic = getTopicById(episode.topicId)
-  return {
-    episode,
-    topicName: topic?.name ?? 'Topic',
-    currentSec: startSec,
-    isPlaying: playing,
-  }
-}
+import { useTopics } from './topics/TopicsContext'
 
 export default function App() {
-  const { userEpisodes, mergeForTopic } = useLibrary()
+  const { topicForDisplay, topicsForNav } = useTopics()
+  const { userEpisodes, mergeForTopic, dismissEpisodeFromLibrary, dismissedEpisodeIds } = useLibrary()
+  const { cheatSheetForEpisode, removeCheatSheetForEpisode } = useCheatSheets()
+
+  const buildNowPlaying = useCallback(
+    (episode: Episode, startSec = 0, playing = true): NowPlayingState => {
+      const topic = topicForDisplay(episode.topicId, episode.topicDisplayName)
+      return {
+        episode,
+        topicName: topic.name,
+        currentSec: startSec,
+        isPlaying: playing,
+      }
+    },
+    [topicForDisplay],
+  )
   const allEpisodes = useMemo(() => {
+    const dismissed = new Set(dismissedEpisodeIds)
     const ids = new Set(userEpisodes.map((e) => e.id))
-    return [...userEpisodes, ...episodes.filter((e) => !ids.has(e.id))]
-  }, [userEpisodes])
+    return [...userEpisodes, ...episodes.filter((e) => !ids.has(e.id) && !dismissed.has(e.id))]
+  }, [userEpisodes, dismissedEpisodeIds])
+
+  const resolveEpisode = useCallback(
+    (episodeId: string) => allEpisodes.find((e) => e.id === episodeId),
+    [allEpisodes],
+  )
 
   const [page, setPage] = useState<AppPage>('create')
   const [playlistTopicId, setPlaylistTopicId] = useState<string | null>(null)
@@ -42,6 +53,7 @@ export default function App() {
   const [volume, setVolume] = useState(0.85)
   const [scrollToCheatEpisodeId, setScrollToCheatEpisodeId] = useState<string | null>(null)
   const [videoCanvasOpen, setVideoCanvasOpen] = useState(false)
+  const [canvasAuthUrl, setCanvasAuthUrl] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const canvasVideoRef = useRef<HTMLVideoElement | null>(null)
   const lastEpisodeIdRef = useRef<string | null>(null)
@@ -106,23 +118,41 @@ export default function App() {
     }
   }, [videoCanvasOpen])
 
-  const canvasSrc = nowPlaying ? canvasVideoSrcForEpisode(nowPlaying.episode) : null
+  useEffect(() => {
+    setCanvasAuthUrl(null)
+  }, [nowPlaying?.episode.id])
+
+  useEffect(() => {
+    if (!videoCanvasOpen || !nowPlaying?.episode.jobId) return
+
+    const jobId = nowPlaying.episode.jobId
+    let cancelled = false
+    setCanvasAuthUrl(null)
+
+    const tick = async () => {
+      const url = await fetchCanvasVideoPresignedUrl(jobId)
+      if (cancelled) return
+      if (url) setCanvasAuthUrl(url)
+    }
+
+    void tick()
+    const intervalId = window.setInterval(tick, 5000)
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
+  }, [videoCanvasOpen, nowPlaying?.episode.jobId])
+
+  const canvasSrc = useMemo(() => {
+    if (!nowPlaying) return null
+    if (nowPlaying.episode.jobId && canvasAuthUrl) return canvasAuthUrl
+    return canvasVideoSrcForEpisode(nowPlaying.episode)
+  }, [nowPlaying, canvasAuthUrl])
 
   useEffect(() => {
     const v = canvasVideoRef.current
     const a = audioRef.current
     if (!videoCanvasOpen || !v || !a || !canvasSrc) return
-    if (v.getAttribute('data-canvas-src') !== canvasSrc) {
-      v.setAttribute('data-canvas-src', canvasSrc)
-      v.src = canvasSrc
-      v.load()
-    }
-  }, [videoCanvasOpen, canvasSrc])
-
-  useEffect(() => {
-    const v = canvasVideoRef.current
-    const a = audioRef.current
-    if (!videoCanvasOpen || !v || !a) return
 
     const loopedVideoTime = (audioTime: number, videoDuration: number) => {
       if (!Number.isFinite(videoDuration) || videoDuration < 0.1) return audioTime
@@ -193,10 +223,13 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [videoCanvasOpen])
 
-  const onPlay = useCallback((episode: Episode) => {
-    if (!isEpisodeAudioPlayable(episode)) return
-    setNowPlaying(buildNowPlaying(episode, 0, true))
-  }, [])
+  const onPlay = useCallback(
+    (episode: Episode) => {
+      if (!isEpisodeAudioPlayable(episode)) return
+      setNowPlaying(buildNowPlaying(episode, 0, true))
+    },
+    [buildNowPlaying],
+  )
 
   const goCheatForEpisode = useCallback((episodeId: string) => {
     setPlaylistTopicId(null)
@@ -207,6 +240,16 @@ export default function App() {
   const clearCheatScroll = useCallback(() => {
     setScrollToCheatEpisodeId(null)
   }, [])
+
+  const onEpisodeRemoved = useCallback(
+    (ep: Episode) => {
+      dismissEpisodeFromLibrary(ep.id)
+      removeCheatSheetForEpisode(ep.id)
+      setNowPlaying((p) => (p?.episode.id === ep.id ? null : p))
+      setScrollToCheatEpisodeId((id) => (id === ep.id ? null : id))
+    },
+    [dismissEpisodeFromLibrary, removeCheatSheetForEpisode],
+  )
 
   const cheatAvailable = nowPlaying ? Boolean(cheatSheetForEpisode(nowPlaying.episode.id)) : false
 
@@ -250,7 +293,7 @@ export default function App() {
       const ep = pool[nextIdx]
       if (ep) setNowPlaying(buildNowPlaying(ep, 0, true))
     },
-    [nowPlaying, shuffle, allEpisodes],
+    [nowPlaying, shuffle, allEpisodes, buildNowPlaying],
   )
 
   const onSeek = useCallback(
@@ -289,7 +332,7 @@ export default function App() {
     } else {
       setNowPlaying(buildNowPlaying(list[0], 0, true))
     }
-  }, [playlistTopicId, shuffle, mergeForTopic])
+  }, [playlistTopicId, shuffle, mergeForTopic, buildNowPlaying])
 
   const onPlayAll = useCallback(
     (topicId: string) => {
@@ -307,7 +350,7 @@ export default function App() {
         activePage={page}
         activeTopicId={page === 'playlist' ? playlistTopicId : null}
         onNavigate={handleNavigate}
-        topics={topics}
+        topics={topicsForNav}
         onTopicClick={onTopicClick}
         collapsed={navCollapsed}
         onToggleCollapsed={() => setNavCollapsed((c) => !c)}
@@ -321,17 +364,23 @@ export default function App() {
             onPlay={onPlay}
             onCheatSheet={goCheatForEpisode}
             onPlayAll={onPlayAll}
+            onEpisodeRemoved={onEpisodeRemoved}
           />
         )}
-        {page === 'playlist' && playlistTopicId && getTopicById(playlistTopicId) && (
+        {page === 'playlist' && playlistTopicId && (
           <TopicPlaylist
-            topic={getTopicById(playlistTopicId)!}
+            topic={topicForDisplay(
+              playlistTopicId,
+              mergeForTopic(playlistTopicId).find((e) => e.topicDisplayName)?.topicDisplayName,
+            )}
             episodes={mergeForTopic(playlistTopicId)}
             playingEpisodeId={playingEpisodeId}
             shuffle={shuffle}
             onShuffleToggle={() => setShuffle((s) => !s)}
             onPlay={onPlay}
+            onCheatSheet={goCheatForEpisode}
             onPlayPlaylist={handlePlayTopicPlaylist}
+            onEpisodeRemoved={onEpisodeRemoved}
             onBack={() => {
               setPlaylistTopicId(null)
               setPage('podcasts')
@@ -343,6 +392,11 @@ export default function App() {
             scrollToEpisodeId={scrollToCheatEpisodeId}
             onConsumedScroll={clearCheatScroll}
             onPlayEpisode={onPlay}
+            resolveEpisode={resolveEpisode}
+            onOpenMyPodcasts={() => {
+              setPlaylistTopicId(null)
+              setPage('podcasts')
+            }}
           />
         )}
       </main>
@@ -357,6 +411,7 @@ export default function App() {
             loop
             preload="metadata"
             aria-hidden={true}
+            src={canvasSrc ?? undefined}
           />
           <div className="player-canvas-scrim" aria-hidden />
           <button
