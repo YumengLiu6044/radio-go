@@ -2,30 +2,18 @@ import boto3
 import json
 import os
 import time
-from pathlib import Path
-
 from model import VOXXPM2Model
-from dotenv import load_dotenv
 
-_here = Path(__file__).resolve().parent
-_repo = _here.parent
-# Shared AWS settings usually live in backend/.env; optional overrides in inference/.env
-load_dotenv(_repo / "backend" / ".env", override=False)
-load_dotenv(_here / ".env", override=True)
 
 AWS_REGION = os.getenv("AWS_DEFAULT_REGION") or os.getenv("AWS_REGION", "us-east-1")
 QUEUE_URL = os.getenv("SQS_URL")
-# Match streaming route (`AUDIO_BUCKET_NAME`) so stitched playback reads the same objects.
-BUCKET = os.getenv("AUDIO_BUCKET_NAME") or os.getenv("S3_BUCKET", "tts-output")
-BOOK_PARTS_TABLE = os.getenv("DYNAMODB_BOOK_PARTS_TABLE", "book-parts")
-
-print(f"Using region {AWS_REGION}, S3 bucket {BUCKET}, book-parts table {BOOK_PARTS_TABLE}")
+BUCKET = os.getenv("AUDIO_BUCKET_NAME")
 
 sqs = boto3.client("sqs", region_name=AWS_REGION)
 s3 = boto3.client("s3", region_name=AWS_REGION)
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)
 
-book_parts = dynamodb.Table(BOOK_PARTS_TABLE)
+book_parts = dynamodb.Table("book-parts")
 
 model = VOXXPM2Model()
 

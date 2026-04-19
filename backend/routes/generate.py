@@ -168,10 +168,4 @@ async def confirm(param: EnqueueRequest):
             MessageDeduplicationId=f"{job_id}-{i}",
         )
 
-    # Visible in uvicorn console without extra logging config
-    print(
-        f"[generate/confirm] job_id={job_id} user_id={param.user_id} "
-        f"lines={len(param.script.lines)} messages sent to SQS queue={queue_url.split('/')[-1]}",
-        flush=True,
-    )
     return record
