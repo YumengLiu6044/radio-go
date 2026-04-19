@@ -9,3 +9,4 @@ boto3
 soundfile
 numpy
 python-multipart
+gunicorn
