@@ -22,4 +22,4 @@ class ConvertUrlRequest(BaseConvertRequest):
 
 
 class EnqueueRequest(BaseConvertRequest):
-    script_data: PodcastScript
+    script: PodcastScript

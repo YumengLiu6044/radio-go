@@ -129,8 +129,8 @@ async def confirm(param: EnqueueRequest):
     record = {
         "user_id": param.user_id,
         "job_id": job_id,
-        "total_lines": len(param.script_data.lines),
-        "title": param.script_data.summarized_title,
+        "total_lines": len(param.script.lines),
+        "title": param.script.summarized_title,
         "topic": param.topic,
         "style": param.style,
         "length": param.audio_length,
@@ -138,7 +138,7 @@ async def confirm(param: EnqueueRequest):
     audio_book_table.put_item(Item=record)
 
     # Enqueue jobs
-    for i, line in enumerate(param.script_data.lines):
+    for i, line in enumerate(param.script.lines):
         message = {
             "job_id": job_id,
             "line_id": i,
