@@ -63,8 +63,8 @@ async def generate_from_url(params: ConvertUrlRequest):
 @generation_route.post("/generate-from-docs")
 async def generate_from_docs(
     user_id: str = Form(default="demo-user"),
-    voice_type_host: VoiceType = Form(default=VoiceType.FEMALE),
-    voice_type_guest: VoiceType = Form(default=VoiceType.MALE),
+    voice_type_host: VoiceType = Form(default=VoiceType.NEUTRAL_PROFESSIONAL),
+    voice_type_guest: VoiceType = Form(default=VoiceType.FEMALE_ENERGETIC),
     audio_length: int = Form(default=120),
     topic: str = Form(default="Episode topic"),
     style: str = Form(default="Interview"),
