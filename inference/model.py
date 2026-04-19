@@ -13,6 +13,7 @@ class VOXXPM2Model:
 
     def infer(self, text: str) -> bytes:
         with torch.no_grad():
+            print(f"Generating audio for: {text}")
             wav = self.model.generate(
                 text=text,
                 inference_timesteps=10,
