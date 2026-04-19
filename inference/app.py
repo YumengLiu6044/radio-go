@@ -24,9 +24,7 @@ def process_message(job):
     voice_type = job["voice_type"]
     text = job["text"]
 
-    text_prompt = f"({voice_type}) {text}"
-
-    audio = model.infer(text_prompt)
+    audio = model.infer(text, voice_type)
 
     key = f"{job['job_id']}/{job['line_id']}.wav"
 
