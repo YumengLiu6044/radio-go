@@ -1,5 +1,4 @@
 import logging
-
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,12 +15,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    # Explicit dev origins (preflight-safe).
-    # If your Vite port changes, add it here or switch back to a regex.
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
