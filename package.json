@@ -1,0 +1,11 @@
+{
+  "name": "podcast-project2",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "preview": "npm run preview --prefix frontend",
+    "inference": "cd inference && python app.py",
+    "test-sqs": "cd backend && python scripts/send_test_sqs_message.py"
+  }
+}

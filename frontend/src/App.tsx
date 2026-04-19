@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import { CreatePodcast } from './components/CreatePodcast'
 import { MyCheatSheets } from './components/MyCheatSheets'
@@ -9,12 +9,13 @@ import {
   canvasVideoSrcForEpisode,
   cheatSheetForEpisode,
   episodes,
-  episodesForTopic,
   getTopicById,
+  isEpisodeAudioPlayable,
   topics,
   type Episode,
 } from './data/mockData'
 import { TopicPlaylist } from './components/TopicPlaylist'
+import { useLibrary } from './library/LibraryContext'
 
 function buildNowPlaying(episode: Episode, startSec = 0, playing = true): NowPlayingState {
   const topic = getTopicById(episode.topicId)
@@ -27,6 +28,12 @@ function buildNowPlaying(episode: Episode, startSec = 0, playing = true): NowPla
 }
 
 export default function App() {
+  const { userEpisodes, mergeForTopic } = useLibrary()
+  const allEpisodes = useMemo(() => {
+    const ids = new Set(userEpisodes.map((e) => e.id))
+    return [...userEpisodes, ...episodes.filter((e) => !ids.has(e.id))]
+  }, [userEpisodes])
+
   const [page, setPage] = useState<AppPage>('create')
   const [playlistTopicId, setPlaylistTopicId] = useState<string | null>(null)
   const [navCollapsed, setNavCollapsed] = useState(false)
@@ -187,6 +194,7 @@ export default function App() {
   }, [videoCanvasOpen])
 
   const onPlay = useCallback((episode: Episode) => {
+    if (!isEpisodeAudioPlayable(episode)) return
     setNowPlaying(buildNowPlaying(episode, 0, true))
   }, [])
 
@@ -214,13 +222,15 @@ export default function App() {
 
   const playAdjacent = useCallback(
     (delta: number) => {
-      if (episodes.length === 0) return
+      if (allEpisodes.length === 0) return
       if (!nowPlaying) {
-        const first = episodes[0]
+        const first = allEpisodes.find(isEpisodeAudioPlayable) ?? allEpisodes[0]
         if (first) setNowPlaying(buildNowPlaying(first, 0, true))
         return
       }
-      const pool = episodes.filter((e) => e.topicId === nowPlaying.episode.topicId)
+      const pool = allEpisodes.filter(
+        (e) => e.topicId === nowPlaying.episode.topicId && isEpisodeAudioPlayable(e),
+      )
       if (pool.length === 0) return
       let idx = pool.findIndex((e) => e.id === nowPlaying.episode.id)
       if (idx < 0) idx = 0
@@ -240,7 +250,7 @@ export default function App() {
       const ep = pool[nextIdx]
       if (ep) setNowPlaying(buildNowPlaying(ep, 0, true))
     },
-    [nowPlaying, shuffle],
+    [nowPlaying, shuffle, allEpisodes],
   )
 
   const onSeek = useCallback(
@@ -272,21 +282,21 @@ export default function App() {
 
   const handlePlayTopicPlaylist = useCallback(() => {
     if (!playlistTopicId) return
-    const list = episodes.filter((e) => e.topicId === playlistTopicId)
+    const list = mergeForTopic(playlistTopicId).filter(isEpisodeAudioPlayable)
     if (list.length === 0) return
     if (shuffle) {
       setNowPlaying(buildNowPlaying(list[Math.floor(Math.random() * list.length)], 0, true))
     } else {
       setNowPlaying(buildNowPlaying(list[0], 0, true))
     }
-  }, [playlistTopicId, shuffle])
+  }, [playlistTopicId, shuffle, mergeForTopic])
 
   const onPlayAll = useCallback(
     (topicId: string) => {
-      const first = episodes.find((e) => e.topicId === topicId)
+      const first = mergeForTopic(topicId).find(isEpisodeAudioPlayable)
       if (first) onPlay(first)
     },
-    [onPlay],
+    [onPlay, mergeForTopic],
   )
 
   return (
@@ -304,7 +314,7 @@ export default function App() {
       />
 
       <main className="app-main">
-        {page === 'create' && <CreatePodcast />}
+        {page === 'create' && <CreatePodcast onPublished={() => setPage('podcasts')} />}
         {page === 'podcasts' && (
           <MyPodcasts
             playingEpisodeId={playingEpisodeId}
@@ -316,7 +326,7 @@ export default function App() {
         {page === 'playlist' && playlistTopicId && getTopicById(playlistTopicId) && (
           <TopicPlaylist
             topic={getTopicById(playlistTopicId)!}
-            episodes={episodesForTopic(playlistTopicId)}
+            episodes={mergeForTopic(playlistTopicId)}
             playingEpisodeId={playingEpisodeId}
             shuffle={shuffle}
             onShuffleToggle={() => setShuffle((s) => !s)}

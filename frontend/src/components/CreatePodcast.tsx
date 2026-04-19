@@ -3,12 +3,20 @@ import {
   generateFromPdf,
   generateFromText,
   generateFromUrl,
+  normalizeScriptVoices,
   type PodcastScript,
   type VoiceTypeApi,
   VOICE_TYPES,
   voiceSelectOptionLabel,
   voiceTypeLabel,
 } from '../api/generate'
+import {
+  DEMO_USER_ID,
+  confirmPodcast,
+  dynamoRowToEpisode,
+  pollJobUntilComplete,
+} from '../api/podcasts'
+import { useLibrary } from '../library/LibraryContext'
 import { topics } from '../data/mockData'
 
 type SourceTab = 'text' | 'url' | 'file'
@@ -22,8 +30,6 @@ const LENGTH_OPTIONS = [
   { label: 'Expert', seconds: 200 },
 ] as const
 
-const USER_ID = 'demo-user'
-
 function getTopicLabel(topicId: string): string {
   return topics.find((t) => t.id === topicId)?.name ?? topicId
 }
@@ -33,7 +39,18 @@ function parseApiError(err: unknown): string {
   return String(err)
 }
 
-export function CreatePodcast() {
+type CreatePodcastProps = {
+  onPublished?: () => void
+}
+
+export function CreatePodcast({ onPublished }: CreatePodcastProps) {
+  const {
+    addOrReplaceUserEpisode,
+    markEpisodeAudioReady,
+    refreshLibrary,
+    setEpisodeSynthProgress,
+    setQueueHint,
+  } = useLibrary()
   const [sourceTab, setSourceTab] = useState<SourceTab>('text')
   const [textContent, setTextContent] = useState('')
   const [urlValue, setUrlValue] = useState('')
@@ -50,6 +67,7 @@ export function CreatePodcast() {
   const [voiceGuest, setVoiceGuest] = useState<VoiceTypeApi>(VOICE_TYPES[3].id)
 
   const [loading, setLoading] = useState(false)
+  const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [script, setScript] = useState<PodcastScript | null>(null)
 
@@ -88,11 +106,12 @@ export function CreatePodcast() {
     setError(null)
     setLoading(true)
     const basePayload = {
-      user_id: USER_ID,
+      user_id: DEMO_USER_ID,
       voice_type_host: voiceHost,
       voice_type_guest: voiceGuest,
       audio_length: audioLength,
       topic: topicName,
+      topic_id: topicId,
       style,
       single,
     }
@@ -128,8 +147,74 @@ export function CreatePodcast() {
     voiceGuest,
     audioLength,
     topicName,
+    topicId,
     style,
     single,
+  ])
+
+  const publishPodcast = useCallback(async () => {
+    if (!script) return
+    setError(null)
+    setPublishing(true)
+    const basePayload = {
+      user_id: DEMO_USER_ID,
+      voice_type_host: voiceHost,
+      voice_type_guest: voiceGuest,
+      audio_length: audioLength,
+      topic: topicName,
+      topic_id: topicId,
+      style,
+      single,
+    }
+    const scriptPayload: PodcastScript = normalizeScriptVoices(
+      { ...script, summarized_title: script.summarized_title?.trim() || topicName },
+      voiceHost,
+      voiceGuest,
+    )
+    try {
+      const record = await confirmPodcast({ ...basePayload, script: scriptPayload })
+      const lineCount = record.total_lines ?? scriptPayload.lines.length
+      const row = { ...record, job_id: record.job_id, topic_id: topicId }
+      addOrReplaceUserEpisode(dynamoRowToEpisode(row, false))
+      setQueueHint(
+        `Queued ${lineCount} line(s) to SQS (job ${record.job_id.slice(0, 8)}…). The API is done. ` +
+          `Audio will stay at 0/${lineCount} on the card until a separate process consumes SQS and writes to DynamoDB. ` +
+          `Open another terminal at the repo root and run: npm run inference`,
+      )
+      onPublished?.()
+      void (async () => {
+        const jid = record.job_id
+        try {
+          await pollJobUntilComplete(jid, {
+            onProgress: (st) =>
+              setEpisodeSynthProgress(jid, st.parts_received, st.total_lines || lineCount),
+          })
+          markEpisodeAudioReady(jid)
+          await refreshLibrary()
+        } catch (e) {
+          setError((prev) => prev ?? parseApiError(e))
+        }
+      })()
+    } catch (e) {
+      setError(parseApiError(e))
+    } finally {
+      setPublishing(false)
+    }
+  }, [
+    script,
+    voiceHost,
+    voiceGuest,
+    audioLength,
+    topicName,
+    topicId,
+    style,
+    single,
+    addOrReplaceUserEpisode,
+    markEpisodeAudioReady,
+    refreshLibrary,
+    onPublished,
+    setQueueHint,
+    setEpisodeSynthProgress,
   ])
 
   const onTopicChange = (e: ChangeEvent<HTMLSelectElement>) => {
@@ -147,7 +232,7 @@ export function CreatePodcast() {
     setError(null)
   }
 
-  /** Full form reset; later this can call the backend to produce MP3 and persist. */
+  /** Clear the form and generated script to start a new episode. */
   const resetToNewPodcast = useCallback(() => {
     setSourceTab('text')
     setTextContent('')
@@ -409,19 +494,27 @@ export function CreatePodcast() {
               <button
                 type="button"
                 className="generate-btn generate-btn--secondary"
-                disabled={loading}
+                disabled={loading || publishing}
                 onClick={() => void runGenerate()}
               >
                 Regenerate
               </button>
               <button
                 type="button"
+                className="generate-btn"
+                disabled={loading || publishing}
+                onClick={() => void publishPodcast()}
+              >
+                {publishing ? 'Publishing…' : 'Create Podcast'}
+              </button>
+              <button
+                type="button"
                 className="generate-btn generate-btn--new-podcast"
-                disabled={loading}
+                disabled={loading || publishing}
                 onClick={resetToNewPodcast}
                 title="Clear the form and start over"
               >
-                Create Podcast
+                Start over
               </button>
             </>
           )}

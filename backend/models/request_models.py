@@ -9,6 +9,8 @@ class BaseConvertRequest(BaseModel):
     voice_type_guest: VoiceType
     audio_length: int
     topic: str
+    """UI topic id (e.g. history) for library grouping."""
+    topic_id: str = "history"
     style: str
     single: bool = False
 

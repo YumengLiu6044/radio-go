@@ -592,6 +592,42 @@
   color: #6b7280;
 }
 
+.library-queue-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid #c7d2fe;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.library-queue-banner p {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.library-queue-banner-dismiss {
+  flex-shrink: 0;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid #a5b4fc;
+  background: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #4338ca;
+  cursor: pointer;
+}
+
+.library-queue-banner-dismiss:hover {
+  background: #e0e7ff;
+}
+
 /* ——— Create Podcast (compact layout) ——— */
 .create-page {
   max-width: 72rem;
@@ -1381,6 +1417,25 @@
   color: #fff;
 }
 
+.ep-btn:disabled,
+.ep-btn.primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.ep-btn:disabled:hover,
+.ep-btn.primary:disabled:hover {
+  border-color: #e2e5ea;
+  color: inherit;
+  background: #ffffff;
+}
+
+.ep-btn.primary:disabled:hover {
+  background: #3b5bdb;
+  color: #fff;
+}
+
 /* ——— Topic playlist (Spotify-style) ——— */
 .topic-playlist {
   --playlist-pad-x: 2.5rem;
@@ -1587,6 +1642,18 @@
   height: 1.3rem;
 }
 
+.topic-playlist-play-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.topic-playlist-play-btn:disabled:hover {
+  background: #3b5bdb;
+  transform: none;
+}
+
 @media (min-width: 560px) {
   .topic-playlist-hero-inner {
     flex-direction: row;
@@ -1638,6 +1705,15 @@
 
 .topic-playlist-row.is-playing {
   background: #e8eeff;
+}
+
+.topic-playlist-row--pending {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.topic-playlist-row--pending:hover {
+  background: transparent;
 }
 
 .topic-playlist-row-thumb {
