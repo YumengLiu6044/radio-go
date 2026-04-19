@@ -8,6 +8,7 @@ class VOXXPM2Model:
         self.model = VoxCPM.from_pretrained(
             "openbmb/VoxCPM2",
             load_denoiser=False,
+            optimize=False
         )
 
     def infer(self, text: str) -> bytes:
