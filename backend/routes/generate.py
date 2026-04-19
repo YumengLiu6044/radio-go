@@ -145,11 +145,14 @@ async def confirm(param: EnqueueRequest):
             "speaker": line.speaker,
             "text": line.text,
             "voice_type": line.voice_type,
+            "total": len(param.script.lines),
         }
 
         sqs.send_message(
             QueueUrl=QUEUE_URL,
             MessageBody=json.dumps(message),
+            MessageGroupId=job_id,
+            MessageDeduplicationId=f"{job_id}-{i}",
         )
 
     return record

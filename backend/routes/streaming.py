@@ -1,6 +1,10 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from core import audio_book_table, book_parts, s3, AUDIO_BUCKET_NAME
 from boto3.dynamodb.conditions import Key
+import numpy as np
+import soundfile as sf
+import io
 
 streaming_route = APIRouter(prefix="/streaming", tags=["streaming"])
 
@@ -40,7 +44,6 @@ async def get_podcasts(user_id: str):
 @streaming_route.get("/stream-url")
 async def get_streaming_urls(job_id: str):
     audio_record = get_job_record(job_id)
-    print(audio_record)
     total_lines = audio_record["total_lines"]
 
     parts = get_parts(job_id)
@@ -48,14 +51,42 @@ async def get_streaming_urls(job_id: str):
     if len(parts) < total_lines:
         raise HTTPException(status_code=404, detail="Job not completed")
 
+    # ensure correct ordering
+    parts = sorted(parts, key=lambda x: x["line_id"])
 
-    urls = [
-        s3.generate_presigned_url(
-            "get_object",
-            Params={'Bucket': AUDIO_BUCKET_NAME, 'Key': f"{job_id}/{part_record["uri"]}"},
+    audio_arrays = []
+    sample_rate = None
+
+    for part in parts:
+        key = part["uri"]
+
+        obj = s3.get_object(
+            Bucket=AUDIO_BUCKET_NAME,
+            Key=key
         )
-        for part_record in parts
-    ]
 
-    return {"urls": urls}
+        body = obj["Body"].read()  # StreamingBody -> bytes
 
+        data, sr = sf.read(io.BytesIO(body))
+
+        if sample_rate is None:
+            sample_rate = sr
+        elif sr != sample_rate:
+            raise HTTPException(status_code=500, detail="Sample rate mismatch")
+
+        audio_arrays.append(data)
+
+    # concatenate all chunks
+    full_audio = np.concatenate(audio_arrays, axis=0)
+
+    buffer = io.BytesIO()
+    sf.write(buffer, full_audio, sample_rate, format="WAV")
+    buffer.seek(0)
+
+    return StreamingResponse(
+        buffer,
+        media_type="audio/wav",
+        headers={
+            "Content-Disposition": f'attachment; filename="{job_id}.wav"'
+        },
+    )
