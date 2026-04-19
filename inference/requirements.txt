@@ -1,7 +1,7 @@
 transformers
 torch
 torchaudio
-omnivoice
+voxcpm
 soundfile
 boto3
 python-dotenv

@@ -1,26 +1,28 @@
-import io
-from omnivoice import OmniVoice
-import soundfile as sf
 import torch
+import io
+import soundfile as sf
+from voxcpm import VoxCPM
 
 class VOXXPM2Model:
     def __init__(self):
-        self.model = OmniVoice.from_pretrained(
-            "k2-fsa/OmniVoice",
-            dtype=torch.float16
+        self.model = VoxCPM.from_pretrained(
+            "openbmb/VoxCPM2",
+            load_denoiser=False,
+            optimize=False
         )
 
-    def infer(self, text: str, instruction: str) -> bytes:
+    def infer(self, text: str) -> bytes:
         with torch.no_grad():
-            audio = self.model.generate(
+            wav = self.model.generate(
                 text=text,
-                ref_text=instruction,
-                num_step=16
+                inference_timesteps=10,
             )
+
+            sample_rate = self.model.tts_model.sample_rate
 
             # 🎯 write WAV to memory buffer
             buffer = io.BytesIO()
-            sf.write(buffer, audio[0], 24000, format="WAV")
+            sf.write(buffer, wav, sample_rate, format="WAV")
 
             # move pointer to start
             buffer.seek(0)
