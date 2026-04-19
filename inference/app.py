@@ -49,9 +49,9 @@ def process_message(job):
 def poll():
     return sqs.receive_message(
         QueueUrl=QUEUE_URL,
-        MaxNumberOfMessages=10,
+        MaxNumberOfMessages=3,
         WaitTimeSeconds=20,      # long polling (IMPORTANT)
-        VisibilityTimeout=10
+        VisibilityTimeout=100
     )
 
 

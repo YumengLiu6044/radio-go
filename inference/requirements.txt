@@ -1,6 +1,3 @@
-transformers
-torch
-torchaudio
 voxcpm
 soundfile
 boto3

@@ -1,4 +1,3 @@
-import torch
 import io
 import soundfile as sf
 from voxcpm import VoxCPM
@@ -26,21 +25,20 @@ class VOXXPM2Model:
         )
 
     def infer(self, text: str, voice_type: str) -> bytes:
-        with torch.no_grad():
-            reference_file = reference_root / reference_file_mapping[voice_type]
-            wav = self.model.generate(
-                text=text,
-                inference_timesteps=10,
-                reference_wav_path=reference_file
-            )
+        reference_file = reference_root / reference_file_mapping[voice_type]
+        wav = self.model.generate(
+            text=text,
+            inference_timesteps=10,
+            reference_wav_path=reference_file
+        )
 
-            sample_rate = self.model.tts_model.sample_rate
+        sample_rate = self.model.tts_model.sample_rate
 
-            # 🎯 write WAV to memory buffer
-            buffer = io.BytesIO()
-            sf.write(buffer, wav, sample_rate, format="WAV")
+        # 🎯 write WAV to memory buffer
+        buffer = io.BytesIO()
+        sf.write(buffer, wav, sample_rate, format="WAV")
 
-            # move pointer to start
-            buffer.seek(0)
+        # move pointer to start
+        buffer.seek(0)
 
-            return buffer.read()
+        return buffer.read()
