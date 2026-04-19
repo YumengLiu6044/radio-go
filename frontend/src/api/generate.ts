@@ -9,11 +9,11 @@ export const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.r
  * `id` values must match `VoiceType` in `backend/models/llm_schema.py` exactly.
  */
 export const VOICE_TYPES = [
-  { id: 'male_deep', name: 'Morgan', description: 'Deep, slow male' },
-  { id: 'male_casual', name: 'Brooks', description: 'Casual male' },
-  { id: 'female_soft', name: 'Elena', description: 'Soft, relaxed' },
-  { id: 'female_energetic', name: 'Nia', description: 'Bright, lively' },
-  { id: 'neutral_professional', name: 'Avery', description: 'Clear, neutral' },
+  { id: 'Male slow and deep voice', name: 'Morgan', description: 'Deep, slow male' },
+  { id: 'Male casual voice', name: 'Brooks', description: 'Casual male' },
+  { id: 'Soft and relaxed female voice', name: 'Elena', description: 'Soft, relaxed' },
+  { id: 'Energetic and expressive female voice', name: 'Nia', description: 'Bright, lively' },
+  { id: 'Gender neutral professional voice', name: 'Avery', description: 'Clear, neutral' },
 ] as const
 
 export type VoiceTypeApi = (typeof VOICE_TYPES)[number]['id']
