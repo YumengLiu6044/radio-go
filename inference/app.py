@@ -8,9 +8,7 @@ load_dotenv()
 
 AWS_REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 QUEUE_URL = os.getenv("SQS_URL")
-BUCKET = os.getenv("S3_BUCKET", "tts-output")
-
-print(f"Using region {AWS_REGION}")
+BUCKET = os.getenv("AUDIO_BUCKET_NAME", "tts-output")
 
 sqs = boto3.client("sqs", region_name=AWS_REGION)
 s3 = boto3.client("s3", region_name=AWS_REGION)
@@ -26,7 +24,9 @@ def process_message(job):
     voice_type = job["voice_type"]
     text = job["text"]
 
-    audio = model.infer(text, voice_type)
+    text_prompt = f"({voice_type}) {text}"
+
+    audio = model.infer(text_prompt, voice_type)
 
     key = f"{job['job_id']}/{job['line_id']}.wav"
 
@@ -60,7 +60,6 @@ def delete_message(msg):
         QueueUrl=QUEUE_URL,
         ReceiptHandle=msg["ReceiptHandle"]
     )
-
 
 while True:
     try:
