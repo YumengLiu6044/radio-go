@@ -3,3 +3,4 @@ torch
 voxcpm
 soundfile
 boto3
+dotenv

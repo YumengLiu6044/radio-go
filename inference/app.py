@@ -3,6 +3,8 @@ import json
 import os
 import time
 from model import VOXXPM2Model
+from dotenv import load_dotenv
+load_dotenv()
 
 AWS_REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 QUEUE_URL = os.getenv("SQS_URL")
