@@ -10,6 +10,8 @@ AWS_REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 QUEUE_URL = os.getenv("SQS_URL")
 BUCKET = os.getenv("S3_BUCKET", "tts-output")
 
+print(f"Using region {AWS_REGION}")
+
 sqs = boto3.client("sqs", region_name=AWS_REGION)
 s3 = boto3.client("s3", region_name=AWS_REGION)
 dynamodb = boto3.resource("dynamodb", region_name=AWS_REGION)

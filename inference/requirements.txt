@@ -4,4 +4,4 @@ torchaudio
 omnivoice
 soundfile
 boto3
-dotenv
+python-dotenv
