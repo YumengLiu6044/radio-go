@@ -130,6 +130,10 @@ async def confirm(param: EnqueueRequest):
         "user_id": param.user_id,
         "job_id": job_id,
         "total_lines": len(param.script_data.lines),
+        "title": param.script_data.summarized_title,
+        "topic": param.topic,
+        "style": param.style,
+        "length": param.audio_length,
     }
     audio_book_table.put_item(Item=record)
 

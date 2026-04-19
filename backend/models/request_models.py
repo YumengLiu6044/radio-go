@@ -21,6 +21,5 @@ class ConvertUrlRequest(BaseConvertRequest):
     urls: List[str]
 
 
-class EnqueueRequest(BaseModel):
-    user_id: str
+class EnqueueRequest(BaseConvertRequest):
     script_data: PodcastScript

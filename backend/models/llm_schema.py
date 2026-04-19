@@ -23,3 +23,4 @@ class DialogueLine(BaseModel):
 
 class PodcastScript(BaseModel):
     lines: List[DialogueLine]
+    summarized_title: str

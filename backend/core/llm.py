@@ -102,6 +102,7 @@ def generate_tts_script(
     Your job:
     - Convert raw text into a natural spoken podcast script
     - Optimize for listening, not reading
+    - Summarize a short title for the podcast
 
     Constraints:
     - Target length: ~{target_words} words
