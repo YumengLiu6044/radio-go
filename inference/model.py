@@ -15,6 +15,7 @@ class VOXXPM2Model:
             audio = self.model.generate(
                 text=text,
                 ref_text=instruction,
+                num_step=16
             )
 
             # 🎯 write WAV to memory buffer
