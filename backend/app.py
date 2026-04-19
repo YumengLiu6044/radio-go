@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 from botocore.exceptions import ClientError
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from routes import generation_route, streaming_route
 
@@ -12,6 +13,19 @@ from routes import generation_route, streaming_route
 log = logging.getLogger("radio_go.aws")
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    # Explicit dev origins (preflight-safe).
+    # If your Vite port changes, add it here or switch back to a regex.
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.exception_handler(ClientError)

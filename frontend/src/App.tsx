@@ -32,7 +32,6 @@ export default function App() {
   const [nowPlaying, setNowPlaying] = useState<NowPlayingState | null>(null)
   const [shuffle, setShuffle] = useState(false)
   const [volume, setVolume] = useState(0.85)
-  const [hasGeneratedOnce, setHasGeneratedOnce] = useState(false)
   const [scrollToCheatEpisodeId, setScrollToCheatEpisodeId] = useState<string | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const lastEpisodeIdRef = useRef<string | null>(null)
@@ -88,12 +87,6 @@ export default function App() {
     setNowPlaying(buildNowPlaying(episode, 0, true))
   }, [])
 
-  const onGenerateComplete = useCallback(() => {
-    setHasGeneratedOnce(true)
-    setPlaylistTopicId(null)
-    setPage('podcasts')
-  }, [])
-
   const goCheatForEpisode = useCallback((episodeId: string) => {
     setPlaylistTopicId(null)
     setPage('cheats')
@@ -104,7 +97,7 @@ export default function App() {
     setScrollToCheatEpisodeId(null)
   }, [])
 
-  const cheatAvailable = nowPlaying ? Boolean(cheatSheetForEpisode(nowPlaying.episode.id)) && hasGeneratedOnce : false
+  const cheatAvailable = nowPlaying ? Boolean(cheatSheetForEpisode(nowPlaying.episode.id)) : false
 
   const onViewCheatSheet = useCallback(() => {
     if (!nowPlaying || !cheatAvailable) return
@@ -203,7 +196,7 @@ export default function App() {
       />
 
       <main className="app-main">
-        {page === 'create' && <CreatePodcast onGenerateComplete={onGenerateComplete} />}
+        {page === 'create' && <CreatePodcast />}
         {page === 'podcasts' && (
           <MyPodcasts
             playingEpisodeId={playingEpisodeId}
@@ -229,7 +222,6 @@ export default function App() {
         )}
         {page === 'cheats' && (
           <MyCheatSheets
-            hasGeneratedOnce={hasGeneratedOnce}
             scrollToEpisodeId={scrollToCheatEpisodeId}
             onConsumedScroll={clearCheatScroll}
             onPlayEpisode={onPlay}

@@ -2,18 +2,12 @@ import { useEffect, useState } from 'react'
 import { cheatSheetsData, episodes, type Episode } from '../data/mockData'
 
 type MyCheatSheetsProps = {
-  hasGeneratedOnce: boolean
   scrollToEpisodeId: string | null
   onConsumedScroll: () => void
   onPlayEpisode: (episode: Episode) => void
 }
 
-export function MyCheatSheets({
-  hasGeneratedOnce,
-  scrollToEpisodeId,
-  onConsumedScroll,
-  onPlayEpisode,
-}: MyCheatSheetsProps) {
+export function MyCheatSheets({ scrollToEpisodeId, onConsumedScroll, onPlayEpisode }: MyCheatSheetsProps) {
   const [highlightId, setHighlightId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -33,21 +27,6 @@ export function MyCheatSheets({
       if (clearHi) clearTimeout(clearHi)
     }
   }, [scrollToEpisodeId, onConsumedScroll])
-
-  if (!hasGeneratedOnce) {
-    return (
-      <div>
-        <h2 className="page-title">My Cheat Sheets</h2>
-        <div className="empty-state">
-          <div className="empty-state-icon" aria-hidden>
-            📋
-          </div>
-          <h2>No cheat sheets yet</h2>
-          <p>Generate a podcast from the Create page to unlock summaries, key terms, and takeaways here.</p>
-        </div>
-      </div>
-    )
-  }
 
   const sheets = cheatSheetsData
 

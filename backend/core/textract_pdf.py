@@ -9,8 +9,9 @@ from __future__ import annotations
 import os
 import time
 import uuid
+import boto3
 from botocore.exceptions import ClientError
-from core import s3, textract, TEXTRACT_BUCKET
+from core import TEXTRACT_BUCKET
 
 
 class TextractConfigError(RuntimeError):
@@ -25,6 +26,26 @@ def _staging_prefix() -> str:
 def _max_pdf_bytes() -> int:
     raw = os.environ.get("TEXTRACT_MAX_PDF_BYTES", str(35 * 1024 * 1024)).strip()
     return int(raw)
+
+def _resolve_textract_region(bucket: str) -> str:
+    """Textract async S3 document APIs must run in the bucket's region.
+
+    - If `TEXTRACT_BUCKET_REGION` is set, use it.
+    - Otherwise, detect via `GetBucketLocation`.
+    """
+    override = (os.environ.get("TEXTRACT_BUCKET_REGION") or "").strip()
+    if override:
+        return override
+
+    # S3 GetBucketLocation returns None/'' for us-east-1.
+    s3_global = boto3.client("s3")
+    try:
+        resp = s3_global.get_bucket_location(Bucket=bucket)
+    except ClientError as e:
+        raise TextractConfigError(f"Unable to read bucket location for {bucket}: {e}") from e
+
+    loc = (resp.get("LocationConstraint") or "").strip()
+    return loc or "us-east-1"
 
 
 def _poll_and_collect_lines(
@@ -67,6 +88,11 @@ def extract_corpus_from_pdf_files(files: list[tuple[str, bytes]]) -> str:
     if not files:
         return ""
 
+    if not TEXTRACT_BUCKET:
+        raise TextractConfigError(
+            "TEXTRACT_S3_BUCKET is not set. Set it to enable Textract, or unset it to use local PDF extraction."
+        )
+
     max_bytes = _max_pdf_bytes()
     for name, pdf_bytes in files:
         if not pdf_bytes.startswith(b"%PDF"):
@@ -78,6 +104,9 @@ def extract_corpus_from_pdf_files(files: list[tuple[str, bytes]]) -> str:
             )
 
     prefix = _staging_prefix()
+    region = _resolve_textract_region(TEXTRACT_BUCKET)
+    s3 = boto3.client("s3", region_name=region)
+    textract = boto3.client("textract", region_name=region)
 
     chunks: list[str] = []
     for name, pdf_bytes in files:
@@ -89,6 +118,8 @@ def extract_corpus_from_pdf_files(files: list[tuple[str, bytes]]) -> str:
                 Body=pdf_bytes,
                 ContentType="application/pdf",
             )
+            # If this fails, it's an S3 permissions/policy issue (not Textract).
+            s3.head_object(Bucket=TEXTRACT_BUCKET, Key=key)
             start = textract.start_document_text_detection(
                 DocumentLocation={"S3Object": {"Bucket": TEXTRACT_BUCKET, "Name": key}},
             )

@@ -493,6 +493,106 @@
   color: #6b7280;
 }
 
+/* ——— Create Podcast (compact layout) ——— */
+.create-page {
+  max-width: 72rem;
+}
+
+.create-page-header {
+  margin-bottom: 1rem;
+}
+
+.create-page-header .page-title {
+  margin-bottom: 0.25rem;
+}
+
+.create-page-lead {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.create-source-stack .create-panel {
+  margin-bottom: 1.25rem;
+}
+
+.create-dropzone-hint {
+  margin-top: 0.35rem;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.create-topic-row {
+  margin-bottom: 1.25rem;
+}
+
+.create-topic-select {
+  max-width: 22rem;
+}
+
+.create-options-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem 2rem;
+  align-items: start;
+  margin-bottom: 1rem;
+}
+
+.create-options-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.voice-pair-row {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 0.35rem 1.75rem;
+  justify-content: start;
+  align-items: start;
+}
+
+.voice-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.voice-picker-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8b919c;
+}
+
+.create-page .generate-wrap {
+  margin-top: 0.5rem;
+}
+
+.create-page .script-preview {
+  margin-top: 1.25rem;
+}
+
+.create-page .script-preview-body {
+  max-height: min(22rem, 38vh);
+}
+
+@media (max-width: 700px) {
+  .create-options-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 380px) {
+  .voice-pair-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .create-tabs {
   display: flex;
   gap: 0.25rem;
@@ -612,45 +712,6 @@
   margin-bottom: 0.5rem;
 }
 
-.create-record {
-  text-align: center;
-  padding: 1.5rem;
-}
-
-.create-record-btn {
-  padding: 0.75rem 1.5rem;
-  border-radius: 12px;
-  border: none;
-  background: #fee2e2;
-  color: #b91c1c;
-  font-weight: 600;
-  font-size: 0.9rem;
-  transition: transform 0.12s ease;
-}
-
-.create-record-btn:hover {
-  transform: scale(1.02);
-}
-
-.create-record-btn.recording {
-  background: #fecaca;
-  animation: pulse-soft 1.2s ease infinite;
-}
-
-@keyframes pulse-soft {
-  50% {
-    opacity: 0.88;
-  }
-}
-
-.create-timer {
-  margin-top: 1rem;
-  font-size: 1.5rem;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  color: #14151a;
-}
-
 .config-grid {
   display: grid;
   gap: 1.25rem;
@@ -712,7 +773,7 @@
 
 .voice-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
   gap: 0.65rem;
 }
 
@@ -740,21 +801,19 @@
   box-shadow: 0 0 0 2px rgba(59, 91, 219, 0.2);
 }
 
-.voice-flag {
-  font-size: 1.25rem;
-  margin-bottom: 0.35rem;
-}
-
 .voice-name {
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   color: #14151a;
+  line-height: 1.25;
 }
 
-.voice-meta {
-  font-size: 0.72rem;
-  color: #8b919c;
-  margin-top: 0.15rem;
+.voice-description {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #6b7280;
+  margin-top: 0.35rem;
+  text-transform: capitalize;
 }
 
 .generate-wrap {
@@ -807,6 +866,182 @@
   margin-top: 0.65rem;
   font-size: 0.85rem;
   color: #6b7280;
+}
+
+.generate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.generate-btn--secondary {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  box-shadow: none;
+}
+
+.generate-btn--secondary:hover:not(:disabled) {
+  box-shadow: 0 4px 14px rgba(20, 21, 26, 0.08);
+  background: #f8fafc;
+}
+
+.generate-btn--new-podcast {
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #94a3b8;
+  box-shadow: none;
+}
+
+.generate-btn--new-podcast:hover:not(:disabled) {
+  border-color: #64748b;
+  background: #f8fafc;
+  box-shadow: 0 4px 14px rgba(20, 21, 26, 0.06);
+}
+
+.create-error {
+  margin: 1rem 0 0;
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 0.9rem;
+}
+
+.create-file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.config-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  color: #9ca3af;
+  line-height: 1.35;
+}
+
+.config-hint code {
+  font-size: 0.68rem;
+  background: #f3f4f6;
+  padding: 0.08rem 0.28rem;
+  border-radius: 4px;
+}
+
+.voice-api-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.voice-api-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.voice-api-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.voice-api-label code {
+  font-size: 0.72rem;
+  font-weight: 500;
+  background: #f3f4f6;
+  padding: 0.08rem 0.28rem;
+  border-radius: 4px;
+}
+
+.voice-api-pills {
+  margin: 0;
+}
+
+.script-preview {
+  margin-top: 2rem;
+  border: 1px solid #e2e5ea;
+  border-radius: 16px;
+  background: #fafbfc;
+  overflow: hidden;
+}
+
+.script-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.15rem;
+  background: #ffffff;
+  border-bottom: 1px solid #eceef2;
+}
+
+.script-preview-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #14151a;
+}
+
+.script-preview-count {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #8b919c;
+}
+
+.script-preview-body {
+  max-height: min(28rem, 55vh);
+  overflow-y: auto;
+  padding: 1rem 1.15rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.script-line {
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #eceef2;
+}
+
+.script-line--host {
+  border-left: 3px solid #3b5bdb;
+}
+
+.script-line--guest {
+  border-left: 3px solid #0d9488;
+}
+
+.script-line-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.script-line-speaker {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #3d4451;
+}
+
+.script-line-voice {
+  font-size: 0.68rem;
+  color: #8b919c;
+  text-transform: capitalize;
+}
+
+.script-line-text {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #1f2937;
 }
 
 /* ——— My Podcasts ——— */
