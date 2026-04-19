@@ -65,6 +65,8 @@ while True:
         response = poll()
         messages = response.get("Messages", [])
 
+        print(f"[POLLED] {len(messages)} messages")
+
         if not messages:
             continue
 
