@@ -15,6 +15,10 @@ class VoiceType(str, Enum):
     NEUTRAL_PROFESSIONAL = "Gender neutral professional voice"
 
 
+# Exact strings accepted by API / sent by the web client (`VOICE_TYPES[].id` in frontend).
+VOICE_TYPE_VALUES: frozenset[str] = frozenset(v.value for v in VoiceType)
+
+
 class DialogueLine(BaseModel):
     speaker: Roles
     text: str

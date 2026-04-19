@@ -5,6 +5,9 @@ import {
   generateFromUrl,
   type PodcastScript,
   type VoiceTypeApi,
+  VOICE_TYPES,
+  voiceSelectOptionLabel,
+  voiceTypeLabel,
 } from '../api/generate'
 import { topics } from '../data/mockData'
 
@@ -43,8 +46,8 @@ export function CreatePodcast() {
   const [style, setStyle] = useState<string>(STYLE_OPTIONS[0])
   const [lengthLabel, setLengthLabel] = useState<string>(LENGTH_OPTIONS[1].label)
   const [single, setSingle] = useState(false)
-  const [voiceHost, setVoiceHost] = useState<VoiceTypeApi>('female')
-  const [voiceGuest, setVoiceGuest] = useState<VoiceTypeApi>('male')
+  const [voiceHost, setVoiceHost] = useState<VoiceTypeApi>('neutral_professional')
+  const [voiceGuest, setVoiceGuest] = useState<VoiceTypeApi>('female_energetic')
 
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -156,8 +159,8 @@ export function CreatePodcast() {
     setStyle(STYLE_OPTIONS[0])
     setLengthLabel(LENGTH_OPTIONS[1].label)
     setSingle(false)
-    setVoiceHost('female')
-    setVoiceGuest('male')
+    setVoiceHost('neutral_professional')
+    setVoiceGuest('female_energetic')
     setLoading(false)
     setError(null)
     setScript(null)
@@ -329,54 +332,60 @@ export function CreatePodcast() {
           </div>
 
           <div className="config-block">
-            <label>{single ? 'Voice' : 'Voices'}</label>
+            <div className="config-block-section-title">{single ? 'Voice type' : 'Voice types'}</div>
             {single ? (
               <div className="voice-picker">
-                <span className="voice-picker-label">Narrator</span>
-                <div className="config-pills">
-                  {(['female', 'male'] as const).map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      className={`pill${voiceHost === v ? ' active' : ''}`}
-                      onClick={() => setVoiceHost(v)}
-                    >
-                      {v}
-                    </button>
+                <label htmlFor="voice-narrator-select" className="voice-picker-label">
+                  Narrator
+                </label>
+                <select
+                  id="voice-narrator-select"
+                  className="config-select voice-type-select"
+                  value={voiceHost}
+                  onChange={(e) => setVoiceHost(e.target.value as VoiceTypeApi)}
+                >
+                  {VOICE_TYPES.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {voiceSelectOptionLabel(v.id)}
+                    </option>
                   ))}
-                </div>
+                </select>
               </div>
             ) : (
               <div className="voice-pair-row">
                 <div className="voice-picker">
-                  <span className="voice-picker-label">Host</span>
-                  <div className="config-pills">
-                    {(['female', 'male'] as const).map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        className={`pill${voiceHost === v ? ' active' : ''}`}
-                        onClick={() => setVoiceHost(v)}
-                      >
-                        {v}
-                      </button>
+                  <label htmlFor="voice-host-select" className="voice-picker-label">
+                    Host
+                  </label>
+                  <select
+                    id="voice-host-select"
+                    className="config-select voice-type-select"
+                    value={voiceHost}
+                    onChange={(e) => setVoiceHost(e.target.value as VoiceTypeApi)}
+                  >
+                    {VOICE_TYPES.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {voiceSelectOptionLabel(v.id)}
+                      </option>
                     ))}
-                  </div>
+                  </select>
                 </div>
                 <div className="voice-picker">
-                  <span className="voice-picker-label">Guest</span>
-                  <div className="config-pills">
-                    {(['female', 'male'] as const).map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        className={`pill${voiceGuest === v ? ' active' : ''}`}
-                        onClick={() => setVoiceGuest(v)}
-                      >
-                        {v}
-                      </button>
+                  <label htmlFor="voice-guest-select" className="voice-picker-label">
+                    Guest
+                  </label>
+                  <select
+                    id="voice-guest-select"
+                    className="config-select voice-type-select"
+                    value={voiceGuest}
+                    onChange={(e) => setVoiceGuest(e.target.value as VoiceTypeApi)}
+                  >
+                    {VOICE_TYPES.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {voiceSelectOptionLabel(v.id)}
+                      </option>
                     ))}
-                  </div>
+                  </select>
                 </div>
               </div>
             )}
@@ -435,7 +444,7 @@ export function CreatePodcast() {
               <div key={`${i}-${line.speaker}`} className={`script-line script-line--${line.speaker}`}>
                 <div className="script-line-meta">
                   <span className="script-line-speaker">{line.speaker}</span>
-                  <span className="script-line-voice">{line.voice_type}</span>
+                  <span className="script-line-voice">{voiceTypeLabel(line.voice_type)}</span>
                 </div>
                 <p className="script-line-text">{line.text}</p>
               </div>

@@ -4,7 +4,33 @@
  */
 export const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '') ?? '/api'
 
-export type VoiceTypeApi = 'male' | 'female'
+/**
+ * Preset voices for create + API payloads.
+ * `id` values must match `VoiceType` in `backend/models/llm_schema.py` exactly.
+ */
+export const VOICE_TYPES = [
+  { id: 'male_deep', name: 'Morgan', description: 'Deep, slow male' },
+  { id: 'male_casual', name: 'Brooks', description: 'Casual male' },
+  { id: 'female_soft', name: 'Elena', description: 'Soft, relaxed' },
+  { id: 'female_energetic', name: 'Nia', description: 'Bright, lively' },
+  { id: 'neutral_professional', name: 'Avery', description: 'Clear, neutral' },
+] as const
+
+export type VoiceTypeApi = (typeof VOICE_TYPES)[number]['id']
+
+/** Same strings as backend `VOICE_TYPE_VALUES` / `VoiceType` enum. */
+export const VOICE_TYPE_VALUES: readonly VoiceTypeApi[] = VOICE_TYPES.map((v) => v.id)
+
+export function voiceTypeLabel(id: string): string {
+  const row = VOICE_TYPES.find((v) => v.id === id)
+  return row ? row.name : id
+}
+
+/** One-line label for voice `<select>` options (name + short hint). */
+export function voiceSelectOptionLabel(id: VoiceTypeApi): string {
+  const row = VOICE_TYPES.find((v) => v.id === id)
+  return row ? `${row.name} — ${row.description}` : id
+}
 
 export type DialogueLine = {
   speaker: 'host' | 'guest'
@@ -114,8 +140,9 @@ export async function generateFromPdf(
 ): Promise<PodcastScript> {
   const form = new FormData()
   form.append('user_id', fields.user_id)
-  form.append('voice_type_host', fields.voice_type_host)
-  form.append('voice_type_guest', fields.voice_type_guest)
+  // Must match FastAPI `VoiceType` form fields (`male_deep`, …).
+  form.append('voice_type_host', String(fields.voice_type_host))
+  form.append('voice_type_guest', String(fields.voice_type_guest))
   form.append('audio_length', String(fields.audio_length))
   form.append('topic', fields.topic)
   form.append('style', fields.style)

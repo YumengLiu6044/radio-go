@@ -1,6 +1,20 @@
 from langchain_aws import ChatBedrockConverse
-from models import PodcastScript, Roles
+from models import PodcastScript, Roles, VoiceType
 from .aws import AWS_REGION
+
+VOICE_INSTRUCTIONS: dict[VoiceType, str] = {
+    VoiceType.MALE_DEEP: "Male, deep and slow.",
+    VoiceType.MALE_CASUAL: "Male, casual and conversational.",
+    VoiceType.FEMALE_SOFT: "Female, soft and relaxed.",
+    VoiceType.FEMALE_ENERGETIC: "Female, bright and lively.",
+    VoiceType.NEUTRAL_PROFESSIONAL: "Gender-neutral, clear and professional.",
+}
+
+
+def _voice_prompt(v: VoiceType | str) -> str:
+    if isinstance(v, str):
+        v = VoiceType(v)
+    return VOICE_INSTRUCTIONS[v]
 
 context_llm = ChatBedrockConverse(
     model="global.anthropic.claude-sonnet-4-6",
@@ -59,8 +73,8 @@ def enrich_context(corpus: str, topic: str) -> str:
 def generate_tts_script(
     corpus: str,
     audio_length: int,
-    voice_type_host: str,
-    voice_type_guest: str,
+    voice_type_host: VoiceType,
+    voice_type_guest: VoiceType,
     style: str,
     topic: str,
     single: bool = False,
@@ -78,7 +92,7 @@ def generate_tts_script(
         """
 
         voice_constraints = f"""
-        Voice: {voice_type_host}
+        Voice: {_voice_prompt(voice_type_host)}
         """
 
     else:
@@ -89,8 +103,8 @@ def generate_tts_script(
         """
 
         voice_constraints = f"""
-        Voice for the host: {voice_type_host}
-        Voice for the guest: {voice_type_guest}
+        Voice for the host: {_voice_prompt(voice_type_host)}
+        Voice for the guest: {_voice_prompt(voice_type_guest)}
         """
 
     system_prompt = f"""
