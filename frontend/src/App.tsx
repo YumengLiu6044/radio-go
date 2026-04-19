@@ -6,6 +6,7 @@ import { MyPodcasts } from './components/MyPodcasts'
 import { PlayerBar, type NowPlayingState } from './components/PlayerBar'
 import { Sidebar, type AppPage } from './components/Sidebar'
 import {
+  canvasVideoSrcForEpisode,
   cheatSheetForEpisode,
   episodes,
   episodesForTopic,
@@ -33,7 +34,9 @@ export default function App() {
   const [shuffle, setShuffle] = useState(false)
   const [volume, setVolume] = useState(0.85)
   const [scrollToCheatEpisodeId, setScrollToCheatEpisodeId] = useState<string | null>(null)
+  const [videoCanvasOpen, setVideoCanvasOpen] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const canvasVideoRef = useRef<HTMLVideoElement | null>(null)
   const lastEpisodeIdRef = useRef<string | null>(null)
 
   const playingEpisodeId = nowPlaying?.episode.id ?? null
@@ -83,6 +86,106 @@ export default function App() {
     else el.pause()
   }, [trackId, trackSrc, trackIsPlaying, volume])
 
+  useEffect(() => {
+    if (!nowPlaying) setVideoCanvasOpen(false)
+  }, [nowPlaying])
+
+  useEffect(() => {
+    if (!videoCanvasOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [videoCanvasOpen])
+
+  const canvasSrc = nowPlaying ? canvasVideoSrcForEpisode(nowPlaying.episode) : null
+
+  useEffect(() => {
+    const v = canvasVideoRef.current
+    const a = audioRef.current
+    if (!videoCanvasOpen || !v || !a || !canvasSrc) return
+    if (v.getAttribute('data-canvas-src') !== canvasSrc) {
+      v.setAttribute('data-canvas-src', canvasSrc)
+      v.src = canvasSrc
+      v.load()
+    }
+  }, [videoCanvasOpen, canvasSrc])
+
+  useEffect(() => {
+    const v = canvasVideoRef.current
+    const a = audioRef.current
+    if (!videoCanvasOpen || !v || !a) return
+
+    const loopedVideoTime = (audioTime: number, videoDuration: number) => {
+      if (!Number.isFinite(videoDuration) || videoDuration < 0.1) return audioTime
+      let x = audioTime % videoDuration
+      if (x < 0) x += videoDuration
+      return x
+    }
+
+    const wrapDistance = (p: number, q: number, period: number) => {
+      const d = Math.abs(p - q)
+      return Math.min(d, Math.max(0.01, period - d))
+    }
+
+    const syncTime = () => {
+      const vd = v.duration
+      if (!Number.isFinite(vd) || vd < 0.1) return
+      const target = loopedVideoTime(a.currentTime, vd)
+      if (wrapDistance(v.currentTime, target, vd) > 0.45) {
+        v.currentTime = target
+      }
+    }
+
+    const onAudioPlay = () => {
+      void v.play().catch(() => {})
+    }
+    const onAudioPause = () => {
+      v.pause()
+    }
+
+    const onVideoReady = () => {
+      const vd = v.duration
+      const at = a.currentTime
+      if (Number.isFinite(vd) && vd > 0.1) {
+        v.currentTime = loopedVideoTime(at, vd)
+      } else {
+        v.currentTime = at
+      }
+      if (!a.paused) void v.play().catch(() => {})
+      else v.pause()
+    }
+
+    syncTime()
+    if (!a.paused) void v.play().catch(() => {})
+    else v.pause()
+
+    v.addEventListener('loadeddata', onVideoReady)
+    if (v.readyState >= 2) onVideoReady()
+
+    a.addEventListener('timeupdate', syncTime)
+    a.addEventListener('seeked', syncTime)
+    a.addEventListener('play', onAudioPlay)
+    a.addEventListener('pause', onAudioPause)
+    return () => {
+      v.removeEventListener('loadeddata', onVideoReady)
+      a.removeEventListener('timeupdate', syncTime)
+      a.removeEventListener('seeked', syncTime)
+      a.removeEventListener('play', onAudioPlay)
+      a.removeEventListener('pause', onAudioPause)
+    }
+  }, [videoCanvasOpen, trackIsPlaying, playingEpisodeId, canvasSrc])
+
+  useEffect(() => {
+    if (!videoCanvasOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setVideoCanvasOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [videoCanvasOpen])
+
   const onPlay = useCallback((episode: Episode) => {
     setNowPlaying(buildNowPlaying(episode, 0, true))
   }, [])
@@ -103,6 +206,11 @@ export default function App() {
     if (!nowPlaying || !cheatAvailable) return
     goCheatForEpisode(nowPlaying.episode.id)
   }, [nowPlaying, cheatAvailable, goCheatForEpisode])
+
+  const onViewCheatSheetFromPlayer = useCallback(() => {
+    setVideoCanvasOpen(false)
+    onViewCheatSheet()
+  }, [onViewCheatSheet])
 
   const playAdjacent = useCallback(
     (delta: number) => {
@@ -229,25 +337,72 @@ export default function App() {
         )}
       </main>
 
-      <PlayerBar
-        nowPlaying={nowPlaying}
-        shuffle={shuffle}
-        onShuffleToggle={() => setShuffle((s) => !s)}
-        onPrev={() => playAdjacent(-1)}
-        onNext={() => playAdjacent(1)}
-        onPlayPause={() => setNowPlaying((p) => (p ? { ...p, isPlaying: !p.isPlaying } : p))}
-        onSeek={onSeek}
-        volume={volume}
-        onVolume={setVolume}
-        onViewCheatSheet={onViewCheatSheet}
-        cheatAvailable={cheatAvailable}
-        onEpisodeTitleClick={() => {
-          if (nowPlaying) {
-            setPlaylistTopicId(nowPlaying.episode.topicId)
-            setPage('playlist')
-          }
-        }}
-      />
+      {videoCanvasOpen && nowPlaying ? (
+        <div className="player-canvas-overlay" role="dialog" aria-label="Now playing with video backdrop">
+          <video
+            ref={canvasVideoRef}
+            className="player-canvas-video"
+            playsInline
+            muted
+            loop
+            preload="metadata"
+            aria-hidden={true}
+          />
+          <div className="player-canvas-scrim" aria-hidden />
+          <button
+            type="button"
+            className="player-canvas-close"
+            onClick={() => setVideoCanvasOpen(false)}
+            aria-label="Close video view"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+            </svg>
+          </button>
+          <PlayerBar
+            layout="canvas"
+            nowPlaying={nowPlaying}
+            shuffle={shuffle}
+            onShuffleToggle={() => setShuffle((s) => !s)}
+            onPrev={() => playAdjacent(-1)}
+            onNext={() => playAdjacent(1)}
+            onPlayPause={() => setNowPlaying((p) => (p ? { ...p, isPlaying: !p.isPlaying } : p))}
+            onSeek={onSeek}
+            volume={volume}
+            onVolume={setVolume}
+            onViewCheatSheet={onViewCheatSheetFromPlayer}
+            cheatAvailable={cheatAvailable}
+            onEpisodeTitleClick={() => {
+              setVideoCanvasOpen(false)
+              if (nowPlaying) {
+                setPlaylistTopicId(nowPlaying.episode.topicId)
+                setPage('playlist')
+              }
+            }}
+          />
+        </div>
+      ) : (
+        <PlayerBar
+          nowPlaying={nowPlaying}
+          shuffle={shuffle}
+          onShuffleToggle={() => setShuffle((s) => !s)}
+          onPrev={() => playAdjacent(-1)}
+          onNext={() => playAdjacent(1)}
+          onPlayPause={() => setNowPlaying((p) => (p ? { ...p, isPlaying: !p.isPlaying } : p))}
+          onSeek={onSeek}
+          volume={volume}
+          onVolume={setVolume}
+          onViewCheatSheet={onViewCheatSheetFromPlayer}
+          cheatAvailable={cheatAvailable}
+          onOpenCanvas={() => setVideoCanvasOpen(true)}
+          onEpisodeTitleClick={() => {
+            if (nowPlaying) {
+              setPlaylistTopicId(nowPlaying.episode.topicId)
+              setPage('playlist')
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -23,6 +23,9 @@ type PlayerBarProps = {
   onViewCheatSheet: () => void
   cheatAvailable: boolean
   onEpisodeTitleClick?: () => void
+  /** Default: bottom bar aligned with main column; canvas: full viewport width on video backdrop */
+  layout?: 'dock' | 'canvas'
+  onOpenCanvas?: () => void
 }
 
 function formatTime(sec: number) {
@@ -80,6 +83,15 @@ function IconVolume() {
   )
 }
 
+function IconCanvas() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="15" height="10" rx="1" />
+      <path d="M17 10l5-3v10l-5-3V10z" />
+    </svg>
+  )
+}
+
 export function PlayerBar({
   nowPlaying,
   shuffle,
@@ -93,10 +105,12 @@ export function PlayerBar({
   onViewCheatSheet,
   cheatAvailable,
   onEpisodeTitleClick,
+  layout = 'dock',
+  onOpenCanvas,
 }: PlayerBarProps) {
   if (!nowPlaying) {
     return (
-      <footer className="player-bar">
+      <footer className={`player-bar${layout === 'canvas' ? ' player-bar--canvas' : ''}`}>
         <div className="player-bar-empty">No track selected</div>
       </footer>
     )
@@ -115,7 +129,7 @@ export function PlayerBar({
   }
 
   return (
-    <footer className="player-bar">
+    <footer className={`player-bar${layout === 'canvas' ? ' player-bar--canvas' : ''}`}>
       <div className="player-track">
         <button type="button" className="player-track-title" onClick={onEpisodeTitleClick}>
           {episode.title}
@@ -123,6 +137,17 @@ export function PlayerBar({
         <div className="player-track-meta">
           {nowPlaying.topicName} | {episode.voiceName}
         </div>
+        {layout === 'dock' && onOpenCanvas && (
+          <button
+            type="button"
+            className="player-canvas-open"
+            onClick={onOpenCanvas}
+            title="Full screen with video backdrop"
+            aria-label="Open full screen video backdrop"
+          >
+            <IconCanvas />
+          </button>
+        )}
       </div>
 
       <div className="player-center">

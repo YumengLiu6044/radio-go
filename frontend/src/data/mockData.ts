@@ -312,3 +312,10 @@ export function episodesForTopic(topicId: string): Episode[] {
 export function cheatSheetForEpisode(episodeId: string): CheatSheet | undefined {
   return cheatSheetsData.find((c) => c.episodeId === episodeId)
 }
+
+/** Silent canvas MP4 paired with `audioSrc` (e.g. ep-3.mp3 → ep-3.mp4). */
+export function canvasVideoSrcForEpisode(episode: Episode): string {
+  const m = episode.audioSrc.match(/(ep-\d+)\.mp3$/i)
+  const base = m?.[1] ?? 'ep-1'
+  return `/episodes/${base}.mp4`
+}

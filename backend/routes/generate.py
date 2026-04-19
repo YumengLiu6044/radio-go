@@ -142,9 +142,9 @@ async def confirm(param: EnqueueRequest):
         message = {
             "job_id": job_id,
             "line_id": i,
-            "speaker": line.speaker,
+            "speaker": line.speaker.value,
             "text": line.text,
-            "voice_type": line.voice_type,
+            "voice_type": line.voice_type.value,
         }
 
         sqs.send_message(
