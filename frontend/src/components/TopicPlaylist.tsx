@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { Episode, Topic } from '../data/mockData'
+import { isEpisodeAudioPlayable, type Episode, type Topic } from '../data/mockData'
 
 type TopicPlaylistProps = {
   topic: Topic
@@ -74,6 +74,7 @@ export function TopicPlaylist({
 }: TopicPlaylistProps) {
   const coverEps = useMemo(() => pickCoverEpisodes(topic.id, episodes), [topic.id, episodes])
   const totalMin = useMemo(() => episodes.reduce((s, e) => s + e.durationMin, 0), [episodes])
+  const playableCount = useMemo(() => episodes.filter(isEpisodeAudioPlayable).length, [episodes])
 
   return (
     <div className="topic-playlist">
@@ -112,7 +113,13 @@ export function TopicPlaylist({
               >
                 <IconShuffle active={shuffle} />
               </button>
-              <button type="button" className="topic-playlist-play-btn" onClick={onPlayPlaylist} title="Play">
+              <button
+                type="button"
+                className="topic-playlist-play-btn"
+                disabled={playableCount === 0}
+                onClick={onPlayPlaylist}
+                title={playableCount === 0 ? 'No episodes ready to play yet' : 'Play'}
+              >
                 <IconPlayLarge />
                 <span>Play</span>
               </button>
@@ -122,13 +129,18 @@ export function TopicPlaylist({
       </header>
 
       <div className="topic-playlist-tracks" role="list">
-        {episodes.map((ep) => (
+        {episodes.map((ep) => {
+          const playable = isEpisodeAudioPlayable(ep)
+          return (
           <button
             key={ep.id}
             type="button"
             role="listitem"
-            className={`topic-playlist-row${playingEpisodeId === ep.id ? ' is-playing' : ''}`}
-            onClick={() => onPlay(ep)}
+            disabled={!playable}
+            className={`topic-playlist-row${playingEpisodeId === ep.id ? ' is-playing' : ''}${!playable ? ' topic-playlist-row--pending' : ''}`}
+            onClick={() => {
+              if (playable) onPlay(ep)
+            }}
           >
             <div className="topic-playlist-row-thumb" style={{ background: ep.cardBg }} aria-hidden>
               <span>{ep.emoji}</span>
@@ -140,7 +152,7 @@ export function TopicPlaylist({
               </span>
             </div>
           </button>
-        ))}
+        )})}
       </div>
     </div>
   )

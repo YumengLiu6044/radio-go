@@ -17,8 +17,19 @@ export type Episode = {
   voiceName: string
   voiceRegion: 'US' | 'UK' | 'AUS' | 'IND'
   voiceGender: string
-  /** Local file under `public/episodes/` */
+  /** Local file under `public/episodes/` or API URL for generated episodes */
   audioSrc: string
+  /** Set for user-generated episodes (Dynamo job id) */
+  jobId?: string
+  /** false while TTS pipeline is still producing parts; omit on mock episodes (treated as ready) */
+  audioReady?: boolean
+  /** Dynamo `book-parts` rows received (inference worker); omit on mocks */
+  synthProgress?: { received: number; total: number }
+}
+
+/** Mock episodes omit `audioReady` (treated as playable). */
+export function isEpisodeAudioPlayable(ep: Episode): boolean {
+  return ep.audioReady !== false
 }
 
 export type CheatSheet = {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { episodesForTopic, topics, type Episode } from '../data/mockData'
+import { isEpisodeAudioPlayable, topics, type Episode } from '../data/mockData'
+import { useLibrary } from '../library/LibraryContext'
 
 type MyPodcastsProps = {
   playingEpisodeId: string | null
@@ -78,7 +79,14 @@ function TopicCarousel({
           </button>
         )}
         <div ref={scRef} className="carousel">
-          {eps.map((ep) => (
+          {eps.map((ep) => {
+            const playable = isEpisodeAudioPlayable(ep)
+            const prog = ep.synthProgress
+            const pendingLabel =
+              prog && prog.total > 0
+                ? `Synthesizing ${prog.received}/${prog.total}`
+                : 'Waiting for worker…'
+            return (
             <article key={ep.id} className={`episode-card${playingEpisodeId === ep.id ? ' playing' : ''}`}>
               <div className="ep-thumb-wrap">
                 <div className="ep-thumb" style={{ background: ep.cardBg }}>
@@ -92,8 +100,18 @@ function TopicCarousel({
                   {ep.durationMin} min • {ep.depth}
                 </div>
                 <div className="ep-actions">
-                  <button type="button" className="ep-btn primary" onClick={() => onPlay(ep)}>
-                    Play
+                  <button
+                    type="button"
+                    className="ep-btn primary"
+                    disabled={!playable}
+                    title={
+                      !playable
+                        ? 'Run npm run inference (repo root) so SQS messages become audio parts in DynamoDB.'
+                        : undefined
+                    }
+                    onClick={() => onPlay(ep)}
+                  >
+                    {playable ? 'Play' : pendingLabel}
                   </button>
                   <button type="button" className="ep-btn" onClick={() => onCheatSheet(ep.id)}>
                     Cheat Sheet
@@ -101,7 +119,7 @@ function TopicCarousel({
                 </div>
               </div>
             </article>
-          ))}
+          )})}
         </div>
         {canRight && (
           <button
@@ -119,13 +137,24 @@ function TopicCarousel({
 }
 
 export function MyPodcasts({ playingEpisodeId, onPlay, onCheatSheet, onPlayAll }: MyPodcastsProps) {
+  const { mergeForTopic, queueHint, setQueueHint } = useLibrary()
+
   return (
     <div>
       <h2 className="page-title">My Podcasts</h2>
       <p className="page-sub">Your library, organized by topic. Use the arrows to browse each row.</p>
 
+      {queueHint && (
+        <div className="library-queue-banner" role="status">
+          <p>{queueHint}</p>
+          <button type="button" className="library-queue-banner-dismiss" onClick={() => setQueueHint(null)}>
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {topics.map((topic) => {
-        const eps = episodesForTopic(topic.id)
+        const eps = mergeForTopic(topic.id)
         if (eps.length === 0) return null
         return (
           <TopicCarousel

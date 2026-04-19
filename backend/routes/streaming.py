@@ -24,12 +24,15 @@ def get_parts(job_id: str):
 @streaming_route.get("/status")
 async def get_job_status(job_id: str):
     audio_record = get_job_record(job_id)
-    total_lines = audio_record["total_lines"]
+    total_lines = int(audio_record["total_lines"])
 
     parts = get_parts(job_id)
+    received = len(parts)
     return {
         "job_id": job_id,
-        "status": "in_progress" if len(parts) < total_lines else "completed",
+        "status": "in_progress" if received < total_lines else "completed",
+        "parts_received": received,
+        "total_lines": total_lines,
     }
 
 @streaming_route.get("/podcasts")
