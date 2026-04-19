@@ -16,12 +16,8 @@ def _voice_prompt(v: VoiceType | str) -> str:
         v = VoiceType(v)
     return VOICE_INSTRUCTIONS[v]
 
-context_llm = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6",
-    region_name=AWS_REGION,
-)
 podcase_llm = ChatBedrockConverse(
-    model="global.anthropic.claude-sonnet-4-6",
+    model="us.anthropic.claude-3-5-haiku-20241022-v1:0",
     region_name=AWS_REGION,
 ).with_structured_output(PodcastScript)
 
@@ -30,45 +26,6 @@ def estimate_word_count(audio_length_sec: int) -> int:
     # average speaking rate ≈ 150 words/min
     return int((audio_length_sec / 60) * 150)
 
-
-def enrich_context(corpus: str, topic: str) -> str:
-    system_prompt = f"""
-    You are an expert researcher.
-    
-    Your job:
-    - Extract the most important ideas from the text
-    - Add missing background context
-    - Clarify complex concepts
-    - Keep it concise but informative
-    
-    Focus on:
-    - Key concepts
-    - Important facts
-    - Definitions
-    - Implicit assumptions
-    - Useful examples
-    
-    Topic: {topic}
-    
-    Output format:
-    - Clear paragraphs
-    - No bullet points
-    - No fluff
-    """
-
-    human_prompt = f"""
-    Text:
-    {corpus}
-    
-    Produce enriched context.
-    """
-
-    response = context_llm.invoke([
-        ("system", system_prompt),
-        ("human", human_prompt),
-    ])
-
-    return response.content.strip()
 
 def generate_tts_script(
     corpus: str,
@@ -136,12 +93,10 @@ def generate_tts_script(
 
     """
 
-    enriched_context = enrich_context(corpus, topic)
-
     human_prompt = f"""
     Use this enriched context:
 
-    {enriched_context}
+    {corpus}
 
     Create the final TTS script.
     """
