@@ -64,7 +64,7 @@ def generate_tts_script(
     style: str,
     topic: str,
     single: bool = False,
-) -> dict:
+) -> dict[str, object]:
     corpus = corpus[:8000]
 
     target_words = estimate_word_count(audio_length)
@@ -140,4 +140,4 @@ def generate_tts_script(
         for i, line in enumerate(response.lines):
             response.lines[i].speaker = Roles.HOST
 
-    return response
+    return response.model_dump(mode="json")
