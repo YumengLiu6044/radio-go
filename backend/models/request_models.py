@@ -25,3 +25,11 @@ class ConvertUrlRequest(BaseConvertRequest):
 
 class EnqueueRequest(BaseConvertRequest):
     script: PodcastScript
+
+
+class CheatSheetRequest(BaseModel):
+    """Generate a listener cheat sheet from a finalized podcast script."""
+
+    script: PodcastScript
+    title: str = ""
+    topic: str = ""

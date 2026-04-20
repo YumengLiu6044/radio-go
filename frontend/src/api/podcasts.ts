@@ -1,7 +1,7 @@
 import { API_BASE } from './generate'
 import type { GenerateBaseBody, PodcastScript } from './generate'
 import type { Episode } from '../data/mockData'
-import { topics } from '../data/mockData'
+import { topicIdFromDynamoRow } from '../lib/topicIds'
 
 export const DEMO_USER_ID = 'demo-user'
 
@@ -57,9 +57,16 @@ export type DynamoPodcastRow = {
   title?: string
   topic?: string
   topic_id?: string
+  /** Some JSON layers use camelCase */
+  topicId?: string
   style?: string
   length?: number
   total_lines?: number
+  /** Nova Reel pipeline (optional) */
+  canvas_video_status?: string
+  canvas_video_bucket?: string
+  canvas_video_key?: string
+  canvas_video_error?: string
 }
 
 export async function fetchUserPodcasts(userId: string): Promise<DynamoPodcastRow[]> {
@@ -73,6 +80,19 @@ export type JobStatus = {
   status: string
   parts_received: number
   total_lines: number
+}
+
+/** Presigned S3 URL for Nova Reel canvas MP4 when ready; null if still generating or pipeline disabled. */
+export async function fetchCanvasVideoPresignedUrl(jobId: string): Promise<string | null> {
+  const res = await fetch(`${join('/streaming/canvas-video-url')}?job_id=${encodeURIComponent(jobId)}`)
+  if (res.status === 404) return null
+  if (!res.ok) return null
+  try {
+    const data = (await res.json()) as { url?: string }
+    return typeof data.url === 'string' && data.url.length > 0 ? data.url : null
+  } catch {
+    return null
+  }
 }
 
 export async function getJobStatus(jobId: string): Promise<JobStatus> {
@@ -99,9 +119,27 @@ function pickGradient(jobId: string): string {
   return USER_GRADIENTS[Math.abs(n) % USER_GRADIENTS.length]!
 }
 
+/** Lakers / NBA demo: only sports-tagged (or clearly sports-labeled) *generated* rows use the ball art. */
+const SPORTS_DEMO_CARD_BG =
+  'linear-gradient(145deg, #fff7ed 0%, #fed7aa 45%, #fb923c 100%)'
+
+function rawTopicIdFromRow(row: DynamoPodcastRow): string | undefined {
+  const a = row.topic_id
+  const b = row.topicId
+  const v = (typeof a === 'string' ? a : typeof b === 'string' ? b : '').trim()
+  return v || undefined
+}
+
+function useSportsDemoPresentation(topicId: string, topicLabel?: string): boolean {
+  if (topicId === 'sports') return true
+  if (topicLabel && /sport|nba|lakers|basketball|hoops/i.test(topicLabel)) return true
+  return false
+}
+
 export function dynamoRowToEpisode(row: DynamoPodcastRow, audioReady: boolean): Episode {
   const jobId = String(row.job_id)
-  const topicId = row.topic_id ?? topics.find((t) => t.name === row.topic)?.id ?? 'history'
+  const topicName = typeof row.topic === 'string' ? row.topic.trim() : undefined
+  const topicId = topicIdFromDynamoRow(rawTopicIdFromRow(row), topicName)
   const lengthSec = typeof row.length === 'number' ? row.length : Number(row.length ?? 120)
   const durationMin = Math.max(1, Math.round(lengthSec / 60))
   const totalLines = Math.max(
@@ -109,15 +147,20 @@ export function dynamoRowToEpisode(row: DynamoPodcastRow, audioReady: boolean): 
     typeof row.total_lines === 'number' ? row.total_lines : Number(row.total_lines ?? 1),
   )
 
+  const sportsDemo = useSportsDemoPresentation(topicId, topicName)
+  const emoji = sportsDemo ? '🏀' : '🎙️'
+  const cardBg = sportsDemo ? SPORTS_DEMO_CARD_BG : pickGradient(jobId)
+
   return {
     id: jobId,
     topicId,
+    topicDisplayName: topicName || undefined,
     title: String(row.title ?? 'Untitled episode'),
-    emoji: '🎙️',
-    cardBg: pickGradient(jobId),
+    emoji,
+    cardBg,
     style: String(row.style ?? 'Generated'),
     durationMin,
-    depth: 'Generated',
+    depth: 'Beginner',
     voiceName: 'TTS',
     voiceRegion: 'US',
     voiceGender: '—',

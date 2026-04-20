@@ -185,3 +185,28 @@ export async function generateFromPdf(
   )
   return data.script
 }
+
+export type CheatSheetApiResult = {
+  key_terms: string[]
+  concepts: string[]
+  takeaway: string
+}
+
+/** Bedrock-generated cheat sheet from a finalized script (after publish). */
+export async function generateCheatSheetApi(body: {
+  script: PodcastScript
+  title: string
+  topic: string
+}): Promise<CheatSheetApiResult> {
+  const res = await fetch(joinUrl('/generate/cheat-sheet'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      script: body.script,
+      title: body.title,
+      topic: body.topic,
+    }),
+  })
+  if (!res.ok) throw new Error(await readError(res))
+  return (await res.json()) as CheatSheetApiResult
+}

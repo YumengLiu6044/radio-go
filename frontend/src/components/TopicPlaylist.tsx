@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useCheatSheets } from '../cheatSheets/CheatSheetsContext'
 import { isEpisodeAudioPlayable, type Episode, type Topic } from '../data/mockData'
 
 type TopicPlaylistProps = {
@@ -8,7 +9,9 @@ type TopicPlaylistProps = {
   shuffle: boolean
   onShuffleToggle: () => void
   onPlay: (episode: Episode) => void
+  onCheatSheet: (episodeId: string) => void
   onPlayPlaylist: () => void
+  onEpisodeRemoved: (episode: Episode) => void
   onBack: () => void
 }
 
@@ -69,9 +72,12 @@ export function TopicPlaylist({
   shuffle,
   onShuffleToggle,
   onPlay,
+  onCheatSheet,
   onPlayPlaylist,
+  onEpisodeRemoved,
   onBack,
 }: TopicPlaylistProps) {
+  const { cheatSheetForEpisode } = useCheatSheets()
   const coverEps = useMemo(() => pickCoverEpisodes(topic.id, episodes), [topic.id, episodes])
   const totalMin = useMemo(() => episodes.reduce((s, e) => s + e.durationMin, 0), [episodes])
   const playableCount = useMemo(() => episodes.filter(isEpisodeAudioPlayable).length, [episodes])
@@ -131,28 +137,56 @@ export function TopicPlaylist({
       <div className="topic-playlist-tracks" role="list">
         {episodes.map((ep) => {
           const playable = isEpisodeAudioPlayable(ep)
+          const hasCheat = Boolean(cheatSheetForEpisode(ep.id))
           return (
-          <button
-            key={ep.id}
-            type="button"
-            role="listitem"
-            disabled={!playable}
-            className={`topic-playlist-row${playingEpisodeId === ep.id ? ' is-playing' : ''}${!playable ? ' topic-playlist-row--pending' : ''}`}
-            onClick={() => {
-              if (playable) onPlay(ep)
-            }}
-          >
-            <div className="topic-playlist-row-thumb" style={{ background: ep.cardBg }} aria-hidden>
-              <span>{ep.emoji}</span>
+            <div key={ep.id} className="topic-playlist-row-wrap" role="listitem">
+              <button
+                type="button"
+                className="topic-playlist-row-remove"
+                aria-label={`Remove ${ep.title} from library`}
+                title="Remove podcast and cheat sheet"
+                onClick={() => onEpisodeRemoved(ep)}
+              >
+                ×
+              </button>
+              <button
+                type="button"
+                disabled={!playable}
+                className={`topic-playlist-row${playingEpisodeId === ep.id ? ' is-playing' : ''}${!playable ? ' topic-playlist-row--pending' : ''}`}
+                onClick={() => {
+                  if (playable) onPlay(ep)
+                }}
+              >
+                <div className="topic-playlist-row-thumb" style={{ background: ep.cardBg }} aria-hidden>
+                  <span>{ep.emoji}</span>
+                </div>
+                <div className="topic-playlist-row-body">
+                  <span className="topic-playlist-row-title">{ep.title}</span>
+                  <span className="topic-playlist-row-sub">
+                    {ep.durationMin} min · {ep.depth} · {ep.style}
+                  </span>
+                </div>
+              </button>
+              <button
+                type="button"
+                className="topic-playlist-row-cheat"
+                disabled={!hasCheat}
+                title={
+                  hasCheat
+                    ? 'Open cheat sheet for this episode'
+                    : 'No cheat sheet for this episode yet. It is created when you publish from Create.'
+                }
+                aria-label={hasCheat ? `Cheat sheet: ${ep.title}` : 'Cheat sheet not available'}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (hasCheat) onCheatSheet(ep.id)
+                }}
+              >
+                Sheet
+              </button>
             </div>
-            <div className="topic-playlist-row-body">
-              <span className="topic-playlist-row-title">{ep.title}</span>
-              <span className="topic-playlist-row-sub">
-                {ep.durationMin} min · {ep.depth} · {ep.style}
-              </span>
-            </div>
-          </button>
-        )})}
+          )
+        })}
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -15,11 +16,32 @@ import {
   getJobStatus,
 } from '../api/podcasts'
 
+const DISMISSED_KEY = 'radio-go.library-dismissed.v1'
+
+function loadDismissedIds(): string[] {
+  try {
+    const raw = localStorage.getItem(DISMISSED_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((x): x is string => typeof x === 'string')
+  } catch {
+    return []
+  }
+}
+
+function persistDismissedIds(ids: string[]) {
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids))
+}
+
 type LibraryContextValue = {
   userEpisodes: Episode[]
+  /** Episodes the user removed from the library (persisted); excluded from `mergeForTopic` and refetches. */
+  dismissedEpisodeIds: readonly string[]
   refreshLibrary: () => Promise<void>
   mergeForTopic: (topicId: string) => Episode[]
   addOrReplaceUserEpisode: (ep: Episode) => void
+  dismissEpisodeFromLibrary: (episodeId: string) => void
   markEpisodeAudioReady: (jobId: string) => void
   setEpisodeSynthProgress: (jobId: string, received: number, total: number) => void
   /** Shown after a successful confirm; TTS only finishes when the inference worker drains SQS. */
@@ -32,6 +54,12 @@ const LibraryContext = createContext<LibraryContextValue | null>(null)
 export function LibraryProvider({ children }: { children: ReactNode }) {
   const [userEpisodes, setUserEpisodes] = useState<Episode[]>([])
   const [queueHint, setQueueHint] = useState<string | null>(null)
+  const [dismissedEpisodeIds, setDismissedEpisodeIds] = useState<string[]>(() => loadDismissedIds())
+  const dismissedRef = useRef<Set<string>>(new Set(dismissedEpisodeIds))
+
+  useEffect(() => {
+    dismissedRef.current = new Set(dismissedEpisodeIds)
+  }, [dismissedEpisodeIds])
 
   const refreshLibrary = useCallback(async () => {
     try {
@@ -66,7 +94,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         const orphanPending = prev.filter(
           (e) => e.audioReady === false && e.jobId && !apiIds.has(e.id),
         )
-        return [...enriched, ...orphanPending]
+        const dismissed = dismissedRef.current
+        return [...enriched, ...orphanPending].filter((e) => !dismissed.has(e.id))
       })
     } catch {
       setUserEpisodes([])
@@ -77,14 +106,29 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     void refreshLibrary()
   }, [refreshLibrary])
 
-  const mergeForTopic = useCallback((topicId: string) => {
-    const mine = userEpisodes.filter((e) => e.topicId === topicId)
-    const seed = episodesForTopic(topicId)
-    return [...mine, ...seed]
-  }, [userEpisodes])
+  const dismissedSet = useMemo(() => new Set(dismissedEpisodeIds), [dismissedEpisodeIds])
+
+  const mergeForTopic = useCallback(
+    (topicId: string) => {
+      const mine = userEpisodes.filter((e) => e.topicId === topicId && !dismissedSet.has(e.id))
+      const seed = episodesForTopic(topicId).filter((e) => !dismissedSet.has(e.id))
+      return [...mine, ...seed]
+    },
+    [userEpisodes, dismissedSet],
+  )
 
   const addOrReplaceUserEpisode = useCallback((ep: Episode) => {
     setUserEpisodes((prev) => [ep, ...prev.filter((e) => e.id !== ep.id)])
+  }, [])
+
+  const dismissEpisodeFromLibrary = useCallback((episodeId: string) => {
+    setDismissedEpisodeIds((prev) => {
+      if (prev.includes(episodeId)) return prev
+      const next = [...prev, episodeId]
+      persistDismissedIds(next)
+      return next
+    })
+    setUserEpisodes((prev) => prev.filter((e) => e.id !== episodeId))
   }, [])
 
   const markEpisodeAudioReady = useCallback((jobId: string) => {
@@ -107,9 +151,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       userEpisodes,
+      dismissedEpisodeIds,
       refreshLibrary,
       mergeForTopic,
       addOrReplaceUserEpisode,
+      dismissEpisodeFromLibrary,
       markEpisodeAudioReady,
       setEpisodeSynthProgress,
       queueHint,
@@ -117,9 +163,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     }),
     [
       userEpisodes,
+      dismissedEpisodeIds,
       refreshLibrary,
       mergeForTopic,
       addOrReplaceUserEpisode,
+      dismissEpisodeFromLibrary,
       markEpisodeAudioReady,
       setEpisodeSynthProgress,
       queueHint,
