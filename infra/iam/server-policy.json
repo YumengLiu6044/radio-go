@@ -1,0 +1,52 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "BedrockAccess",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock:InvokeModel"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "S3Access",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::audio-bucket-544784026384-us-west-2-an",
+        "arn:aws:s3:::audio-bucket-544784026384-us-west-2-an/*",
+        "arn:aws:s3:::textract-bucket-radio",
+        "arn:aws:s3:::textract-bucket-radio/*"
+      ]
+    },
+    {
+      "Sid": "DynamoAccess",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:PutItem",
+        "dynamodb:GetItem",
+        "dynamodb:Query",
+        "dynamodb:UpdateItem"
+      ],
+      "Resource": [
+      	"arn:aws:dynamodb:us-west-2:544784026384:table/audio-books",
+      	"arn:aws:dynamodb:us-west-2:544784026384:table/book-parts"
+  		]
+    },
+    {
+      "Sid": "SQSAccess",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:SendMessage",
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage"
+      ],
+      "Resource": "arn:aws:sqs:us-west-2:544784026384:text-to-speech.fifo"
+    }
+  ]
+}
